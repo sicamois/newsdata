@@ -59,7 +59,15 @@ type NewsQueryOptions struct {
 
 // Get fetches news based on query parameters.
 func (s *latestNewsService) Get(params *NewsQueryParams) (*newsResponse, error) {
-	return s.client.doRequest(s.endpoint, params)
+	// Validate the query parameters.
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
+	res, err := s.client.fetch(s.endpoint, &params)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*newsResponse), nil
 }
 
 // AdvancedSearch fetches news based on a query and some options to filter the results.
@@ -78,7 +86,7 @@ func (s *latestNewsService) AdvancedSearch(query string, options NewsQueryOption
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.getArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
 }
 
 // Search fetches news based on a simple query.
@@ -227,7 +235,15 @@ type CryptoQueryOptions struct {
 
 // Get fetches crypto news based on query parameters.
 func (s *cryptoNewsService) Get(params CryptoQueryParams) (*newsResponse, error) {
-	return s.client.doRequest(s.endpoint, &params)
+	// Validate the query parameters.
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
+	res, err := s.client.fetch(s.endpoint, &params)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*newsResponse), nil
 }
 
 // AdvancedSearch fetches crypto news based on a query and some options to filter the results.
@@ -245,7 +261,7 @@ func (s *cryptoNewsService) AdvancedSearch(query string, options CryptoQueryOpti
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.getArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
 }
 
 // Search fetches crypto news based on a simple query.
@@ -384,7 +400,15 @@ type ArchiveQueryOptions struct {
 
 // Get fetches news archive based on query parameters.
 func (s *newsArchiveService) Get(params *ArchiveQueryParams) (*newsResponse, error) {
-	return s.client.doRequest(s.endpoint, params)
+	// Validate the query parameters.
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
+	res, err := s.client.fetch(s.endpoint, &params)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*newsResponse), nil
 }
 
 // AdvancedSearch fetches news archive based on a query and some options to filter the results.
@@ -408,7 +432,7 @@ func (s *newsArchiveService) AdvancedSearch(query string, from time.Time, to tim
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.getArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
 }
 
 // Search fetches news archive based on a simple query.
@@ -490,6 +514,55 @@ func (p ArchiveQueryParams) Validate() error {
 	}
 	if p.To.IsZero() && p.To.After(time.Now()) {
 		return fmt.Errorf("To date must be in the past")
+	}
+	return nil
+}
+
+//
+// NEWS SOURCES SERVICE
+//
+
+// newsSourcesService handles news archive-related endpoints.
+type sourcesService struct {
+	client   *baseClient
+	endpoint string
+}
+
+// SourcesQueryParams represents the query parameters for the news archive endpoint.
+type SourcesQueryParams struct {
+	Country        string `query:"country"`        // Country codes (e.g. "us", "uk")
+	Category       string `query:"category"`       // Category (e.g. "technology", "sports")
+	Language       string `query:"language"`       // Language code (e.g. "en", "es")
+	PriorityDomain string `query:"prioritydomain"` // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	DomainUrl      string `query:"domainurl"`      //Domain URLs (e.g. "nytimes.com", "bbc.com", "bbc.co.uk")
+}
+
+// Get fetches news archive based on query parameters.
+func (s *sourcesService) Get(params *SourcesQueryParams) (*sourcesResponse, error) {
+	// Validate the query parameters.
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
+	res, err := s.client.fetch(s.endpoint, &params)
+	if err != nil {
+		return nil, err
+	}
+	return res.(*sourcesResponse), nil
+}
+
+// Validate validates the ArchiveQueryParams struct, ensuring all fields are valid.
+func (p SourcesQueryParams) Validate() error {
+	if p.Country != "" && !isValidCountry(p.Country) {
+		return fmt.Errorf("invalid country code: %s", p.Country)
+	}
+	if p.Language != "" && !isValidLanguage(p.Language) {
+		return fmt.Errorf("invalid language code: %s", p.Language)
+	}
+	if p.Category != "" && !isValidCategory(p.Category) {
+		return fmt.Errorf("invalid category: %s", p.Category)
+	}
+	if p.PriorityDomain != "" && !isValidPriorityDomain(p.PriorityDomain) {
+		return fmt.Errorf("%s is not an available priority domain. Possible options are: %v", p.PriorityDomain, strings.Join(allowedPriorityDomain, ","))
 	}
 	return nil
 }

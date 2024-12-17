@@ -19,3 +19,15 @@
 
 # Go workspace file
 go.work
+
+# Logs
+Logs
+Log
+log
+*.log
+
+# env
+.env
+
+# MacOS
+.DS_Store

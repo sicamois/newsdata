@@ -58,6 +58,43 @@ type DateTime struct {
 	time.Time
 }
 
+// newsResponse represents the API response.
+type newsResponse struct {
+	Status       string    `json:"status"`
+	TotalResults int       `json:"totalResults"`
+	Articles     []article `json:"results"`
+	NextPage     string    `json:"nextPage"`
+}
+
+type errorResponse struct {
+	Status string `json:"status"`
+	Error  struct {
+		Message string `json:"message"`
+		Code    string `json:"code"`
+	} `json:"results"`
+}
+
+// source represents a news source.
+type source struct {
+	Id          string   `json:"id"`
+	Name        string   `json:"name"`
+	Url         string   `json:"url"`
+	IconUrl     string   `json:"icon"`
+	Priority    int      `json:"priority"`
+	Description string   `json:"description"`
+	Categories  []string `json:"category"`
+	Languages   []string `json:"language"`
+	Countries   []string `json:"country"`
+	LastFetch   DateTime `json:"last_fetch"`
+}
+
+// sourcesResponse represents the news sources API response.
+type sourcesResponse struct {
+	Status       string   `json:"status"`
+	TotalResults int      `json:"totalResults"`
+	Sources      []source `json:"results"`
+}
+
 func (t *DateTime) UnmarshalJSON(b []byte) error {
 	date, err := time.Parse(time.DateTime, strings.Trim(string(b), `"`))
 	if err != nil {
@@ -79,22 +116,6 @@ func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
 }
 
-// newsResponse represents the API response.
-type newsResponse struct {
-	Status       string    `json:"status"`
-	TotalResults int       `json:"totalResults"`
-	Articles     []article `json:"results"`
-	NextPage     string    `json:"nextPage"`
-}
-
-type errorResponse struct {
-	Status string `json:"status"`
-	Error  struct {
-		Message string `json:"message"`
-		Code    string `json:"code"`
-	} `json:"results"`
-}
-
 // newBaseClient creates a new baseClient with default settings.
 func newBaseClient(apiKey string) *baseClient {
 	return &baseClient{
@@ -107,8 +128,8 @@ func newBaseClient(apiKey string) *baseClient {
 	}
 }
 
-// DoRequest sends an HTTP request and decodes the response.
-func (c *baseClient) doRequest(endpoint string, params interface{}) (*newsResponse, error) {
+// fetch sends an HTTP request and decodes the response.
+func (c *baseClient) fetch(endpoint string, params interface{}) (interface{}, error) {
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.BaseURL + endpoint)
 	if err != nil {
@@ -163,8 +184,8 @@ type pageSetter interface {
 	setPage(string)
 }
 
-// getArticles fetches news articles from the API.
-func (c *baseClient) getArticles(endpoint string, params pageSetter, maxResults int) (*[]article, error) {
+// fetchArticles fetches news articles from the API.
+func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResults int) (*[]article, error) {
 	articles := &[]article{}
 
 	page := ""
@@ -173,22 +194,23 @@ func (c *baseClient) getArticles(endpoint string, params pageSetter, maxResults 
 	for len(*articles) < maxResults || maxResults == 0 {
 		params.setPage(page)
 
-		res, err := c.doRequest(endpoint, params)
+		res, err := c.fetch(endpoint, params)
 		if err != nil {
 			return nil, err
 		}
-		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#articles", len(res.Articles), "nextPage", res.NextPage)
+		newsRes := res.(*newsResponse)
+		c.Logger.Debug("Response", "status", newsRes.Status, "totalResults", newsRes.TotalResults, "#articles", len(newsRes.Articles), "nextPage", newsRes.NextPage)
 
-		if maxResults == 0 || res.TotalResults < maxResults {
-			maxResults = res.TotalResults
+		if maxResults == 0 || newsRes.TotalResults < maxResults {
+			maxResults = newsRes.TotalResults
 		}
 
 		// Append results to the aggregate slice.
-		*articles = append(*articles, res.Articles...)
+		*articles = append(*articles, newsRes.Articles...)
 
 		// Update page
-		if res.NextPage == "" || len(*articles) >= maxResults {
-			if res.NextPage == "" {
+		if newsRes.NextPage == "" || len(*articles) >= maxResults {
+			if newsRes.NextPage == "" {
 				c.Logger.Debug("All results fetched")
 			}
 			if len(*articles) >= maxResults {
@@ -196,7 +218,7 @@ func (c *baseClient) getArticles(endpoint string, params pageSetter, maxResults 
 			}
 			break
 		}
-		page = res.NextPage
+		page = newsRes.NextPage
 	}
 
 	// Trim results to maxResults if necessary.
@@ -207,6 +229,23 @@ func (c *baseClient) getArticles(endpoint string, params pageSetter, maxResults 
 	return articles, nil
 }
 
+// fetchSources fetches news sources from the API.
+func (c *baseClient) fetchSources(endpoint string, params SourcesQueryParams) (*[]source, error) {
+	sources := &[]source{}
+
+	res, err := c.fetch(endpoint, params)
+	if err != nil {
+		return nil, err
+	}
+	sourcesRes := res.(*sourcesResponse)
+	c.Logger.Debug("Response", "status", sourcesRes.Status, "totalResults", sourcesRes.TotalResults, "#sources", len(sourcesRes.Sources))
+
+	// Append results to the aggregate slice.
+	*sources = append(*sources, sourcesRes.Sources...)
+
+	return sources, nil
+}
+
 // NewsdataClient is the main client that composes all services.
 type newsdataClient struct {
 	baseClient  *baseClient
@@ -214,8 +253,7 @@ type newsdataClient struct {
 	LatestNews  *latestNewsService
 	CryptoNews  *cryptoNewsService
 	NewsArchive *newsArchiveService
-	// Categories *CategoriesService
-	// Languages  *LanguagesService
+	Sources     *sourcesService
 }
 
 // NewNewsdataClient creates a new instance of NewsdataClient.
@@ -235,6 +273,10 @@ func NewClient(apiKey string) *newsdataClient {
 		NewsArchive: &newsArchiveService{
 			client:   baseClient,
 			endpoint: "/archive",
+		},
+		Sources: &sourcesService{
+			client:   baseClient,
+			endpoint: "/sources",
 		},
 	}
 }
