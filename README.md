@@ -283,8 +283,4 @@ The library provides detailed error information from the API. All methods return
 
 ## License
 
-[Add your license information here]
-
-## Contributing
-
-[Add contributing guidelines here]
+[MIT License](LICENSE)
