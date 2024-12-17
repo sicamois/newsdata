@@ -96,6 +96,9 @@ type sourcesResponse struct {
 }
 
 func (t *DateTime) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		return nil
+	}
 	date, err := time.Parse(time.DateTime, strings.Trim(string(b), `"`))
 	if err != nil {
 		return err
@@ -236,7 +239,7 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 }
 
 // fetchSources fetches news sources from the API.
-func (c *baseClient) fetchSources(endpoint string, params SourcesQueryParams) (*[]source, error) {
+func (c *baseClient) fetchSources(endpoint string, params *SourcesQueryParams) (*[]source, error) {
 	sources := &[]source{}
 
 	body, err := c.fetch(endpoint, params)

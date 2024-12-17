@@ -58,9 +58,9 @@ type NewsQueryOptions struct {
 }
 
 // Get fetches news based on query parameters.
-func (s *latestNewsService) Fetch(params *NewsQueryParams) (*newsResponse, error) {
+func (s *latestNewsService) Fetch(params NewsQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
-	if err := params.Validate(); err != nil {
+	if err := (&params).Validate(); err != nil {
 		return nil, err
 	}
 	return s.client.fetchNews(s.endpoint, &params)
@@ -68,7 +68,7 @@ func (s *latestNewsService) Fetch(params *NewsQueryParams) (*newsResponse, error
 
 // AdvancedSearch fetches news based on a query and some options to filter the results.
 func (s *latestNewsService) AdvancedSearch(query string, options NewsQueryOptions) (*[]article, error) {
-	params := NewsQueryParams{
+	params := &NewsQueryParams{
 		Query:             query,
 		QueryInTitle:      options.QueryInTitle,
 		QueryInMetadata:   options.QueryInMetadata,
@@ -82,7 +82,7 @@ func (s *latestNewsService) AdvancedSearch(query string, options NewsQueryOption
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, params, s.client.maxResults)
 }
 
 // Search fetches news based on a simple query.
@@ -91,7 +91,7 @@ func (s *latestNewsService) Search(query string) (*[]article, error) {
 }
 
 // Validate validates the NewsQueryParams struct, ensuring all fields are valid.
-func (p NewsQueryParams) Validate() error {
+func (p *NewsQueryParams) Validate() error {
 	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
 		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
 	}
@@ -232,7 +232,7 @@ type CryptoQueryOptions struct {
 // Get fetches crypto news based on query parameters.
 func (s *cryptoNewsService) Fetch(params CryptoQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
-	if err := params.Validate(); err != nil {
+	if err := (&params).Validate(); err != nil {
 		return nil, err
 	}
 	return s.client.fetchNews(s.endpoint, &params)
@@ -240,7 +240,7 @@ func (s *cryptoNewsService) Fetch(params CryptoQueryParams) (*newsResponse, erro
 
 // AdvancedSearch fetches crypto news based on a query and some options to filter the results.
 func (s *cryptoNewsService) AdvancedSearch(query string, options CryptoQueryOptions) (*[]article, error) {
-	params := CryptoQueryParams{
+	params := &CryptoQueryParams{
 		Query:           query,
 		QueryInTitle:    options.QueryInTitle,
 		QueryInMetadata: options.QueryInMetadata,
@@ -253,7 +253,7 @@ func (s *cryptoNewsService) AdvancedSearch(query string, options CryptoQueryOpti
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, params, s.client.maxResults)
 }
 
 // Search fetches crypto news based on a simple query.
@@ -262,7 +262,7 @@ func (s *cryptoNewsService) Search(query string) (*[]article, error) {
 }
 
 // Validate validates the CryptoQueryParams struct, ensuring all fields are valid.
-func (p CryptoQueryParams) Validate() error {
+func (p *CryptoQueryParams) Validate() error {
 	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
 		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
 	}
@@ -391,9 +391,9 @@ type ArchiveQueryOptions struct {
 }
 
 // Get fetches news archive based on query parameters.
-func (s *newsArchiveService) Fetch(params *ArchiveQueryParams) (*newsResponse, error) {
+func (s *newsArchiveService) Fetch(params ArchiveQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
-	if err := params.Validate(); err != nil {
+	if err := (&params).Validate(); err != nil {
 		return nil, err
 	}
 	return s.client.fetchNews(s.endpoint, &params)
@@ -401,7 +401,7 @@ func (s *newsArchiveService) Fetch(params *ArchiveQueryParams) (*newsResponse, e
 
 // AdvancedSearch fetches news archive based on a query and some options to filter the results.
 func (s *newsArchiveService) AdvancedSearch(query string, from time.Time, to time.Time, options ArchiveQueryOptions) (*[]article, error) {
-	params := ArchiveQueryParams{
+	params := &ArchiveQueryParams{
 		Query: query,
 		From: DateTime{
 			Time: from,
@@ -420,7 +420,7 @@ func (s *newsArchiveService) AdvancedSearch(query string, from time.Time, to tim
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.fetchArticles(s.endpoint, &params, s.client.maxResults)
+	return s.client.fetchArticles(s.endpoint, params, s.client.maxResults)
 }
 
 // Search fetches news archive based on a simple query.
@@ -429,7 +429,7 @@ func (s *newsArchiveService) Search(query string, from time.Time, to time.Time) 
 }
 
 // Validate validates the ArchiveQueryParams struct, ensuring all fields are valid.
-func (p ArchiveQueryParams) Validate() error {
+func (p *ArchiveQueryParams) Validate() error {
 	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
 		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
 	}
@@ -528,14 +528,14 @@ type SourcesQueryParams struct {
 // Get fetches news archive based on query parameters.
 func (s *sourcesService) Fetch(params SourcesQueryParams) (*[]source, error) {
 	// Validate the query parameters.
-	if err := params.Validate(); err != nil {
+	if err := (&params).Validate(); err != nil {
 		return nil, err
 	}
-	return s.client.fetchSources(s.endpoint, params)
+	return s.client.fetchSources(s.endpoint, &params)
 }
 
 // Validate validates the ArchiveQueryParams struct, ensuring all fields are valid.
-func (p SourcesQueryParams) Validate() error {
+func (p *SourcesQueryParams) Validate() error {
 	if p.Country != "" && !isValidCountry(p.Country) {
 		return fmt.Errorf("invalid country code: %s", p.Country)
 	}
