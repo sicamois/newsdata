@@ -129,7 +129,7 @@ func newBaseClient(apiKey string) *baseClient {
 }
 
 // fetch sends an HTTP request and decodes the response.
-func (c *baseClient) fetch(endpoint string, params interface{}) (interface{}, error) {
+func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) {
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.BaseURL + endpoint)
 	if err != nil {
@@ -170,12 +170,19 @@ func (c *baseClient) fetch(endpoint string, params interface{}) (interface{}, er
 		return nil, errors.New(errorData.Error.Message)
 	}
 
+	return body, nil
+}
+
+func (c *baseClient) fetchNews(endpoint string, params interface{}) (*newsResponse, error) {
+	body, err := c.fetch(endpoint, params)
+	if err != nil {
+		return nil, err
+	}
 	// Decode the JSON response.
 	var data newsResponse
 	if err := json.Unmarshal(body, &data); err != nil { // Parse []byte to go struct pointer
 		return nil, err
 	}
-
 	return &data, nil
 }
 
@@ -194,23 +201,22 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 	for len(*articles) < maxResults || maxResults == 0 {
 		params.setPage(page)
 
-		res, err := c.fetch(endpoint, params)
+		res, err := c.fetchNews(endpoint, params)
 		if err != nil {
 			return nil, err
 		}
-		newsRes := res.(*newsResponse)
-		c.Logger.Debug("Response", "status", newsRes.Status, "totalResults", newsRes.TotalResults, "#articles", len(newsRes.Articles), "nextPage", newsRes.NextPage)
+		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#articles", len(res.Articles), "nextPage", res.NextPage)
 
-		if maxResults == 0 || newsRes.TotalResults < maxResults {
-			maxResults = newsRes.TotalResults
+		if maxResults == 0 || res.TotalResults < maxResults {
+			maxResults = res.TotalResults
 		}
 
 		// Append results to the aggregate slice.
-		*articles = append(*articles, newsRes.Articles...)
+		*articles = append(*articles, res.Articles...)
 
 		// Update page
-		if newsRes.NextPage == "" || len(*articles) >= maxResults {
-			if newsRes.NextPage == "" {
+		if res.NextPage == "" || len(*articles) >= maxResults {
+			if res.NextPage == "" {
 				c.Logger.Debug("All results fetched")
 			}
 			if len(*articles) >= maxResults {
@@ -218,7 +224,7 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 			}
 			break
 		}
-		page = newsRes.NextPage
+		page = res.NextPage
 	}
 
 	// Trim results to maxResults if necessary.
@@ -233,15 +239,21 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 func (c *baseClient) fetchSources(endpoint string, params SourcesQueryParams) (*[]source, error) {
 	sources := &[]source{}
 
-	res, err := c.fetch(endpoint, &params)
+	body, err := c.fetch(endpoint, params)
 	if err != nil {
 		return nil, err
 	}
-	sourcesRes := res.(*sourcesResponse)
-	c.Logger.Debug("Response", "status", sourcesRes.Status, "totalResults", sourcesRes.TotalResults, "#sources", len(sourcesRes.Sources))
+
+	// Decode the JSON response.
+	var res sourcesResponse
+	if err := json.Unmarshal(body, &res); err != nil { // Parse []byte to go struct pointer
+		return nil, err
+	}
+
+	c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
 
 	// Append results to the aggregate slice.
-	*sources = append(*sources, sourcesRes.Sources...)
+	*sources = append(*sources, res.Sources...)
 
 	return sources, nil
 }

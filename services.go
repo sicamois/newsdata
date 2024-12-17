@@ -63,11 +63,7 @@ func (s *latestNewsService) Fetch(params *NewsQueryParams) (*newsResponse, error
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	res, err := s.client.fetch(s.endpoint, &params)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*newsResponse), nil
+	return s.client.fetchNews(s.endpoint, &params)
 }
 
 // AdvancedSearch fetches news based on a query and some options to filter the results.
@@ -239,11 +235,7 @@ func (s *cryptoNewsService) Fetch(params CryptoQueryParams) (*newsResponse, erro
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	res, err := s.client.fetch(s.endpoint, &params)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*newsResponse), nil
+	return s.client.fetchNews(s.endpoint, &params)
 }
 
 // AdvancedSearch fetches crypto news based on a query and some options to filter the results.
@@ -404,11 +396,7 @@ func (s *newsArchiveService) Fetch(params *ArchiveQueryParams) (*newsResponse, e
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	res, err := s.client.fetch(s.endpoint, &params)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*newsResponse), nil
+	return s.client.fetchNews(s.endpoint, &params)
 }
 
 // AdvancedSearch fetches news archive based on a query and some options to filter the results.
