@@ -58,7 +58,7 @@ type NewsQueryOptions struct {
 }
 
 // Get fetches news based on query parameters.
-func (s *latestNewsService) Get(params *NewsQueryParams) (*newsResponse, error) {
+func (s *latestNewsService) Fetch(params *NewsQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
 	if err := params.Validate(); err != nil {
 		return nil, err
@@ -234,7 +234,7 @@ type CryptoQueryOptions struct {
 }
 
 // Get fetches crypto news based on query parameters.
-func (s *cryptoNewsService) Get(params CryptoQueryParams) (*newsResponse, error) {
+func (s *cryptoNewsService) Fetch(params CryptoQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
 	if err := params.Validate(); err != nil {
 		return nil, err
@@ -399,7 +399,7 @@ type ArchiveQueryOptions struct {
 }
 
 // Get fetches news archive based on query parameters.
-func (s *newsArchiveService) Get(params *ArchiveQueryParams) (*newsResponse, error) {
+func (s *newsArchiveService) Fetch(params *ArchiveQueryParams) (*newsResponse, error) {
 	// Validate the query parameters.
 	if err := params.Validate(); err != nil {
 		return nil, err
@@ -538,16 +538,12 @@ type SourcesQueryParams struct {
 }
 
 // Get fetches news archive based on query parameters.
-func (s *sourcesService) Get(params *SourcesQueryParams) (*sourcesResponse, error) {
+func (s *sourcesService) Fetch(params SourcesQueryParams) (*[]source, error) {
 	// Validate the query parameters.
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	res, err := s.client.fetch(s.endpoint, &params)
-	if err != nil {
-		return nil, err
-	}
-	return res.(*sourcesResponse), nil
+	return s.client.fetchSources(s.endpoint, params)
 }
 
 // Validate validates the ArchiveQueryParams struct, ensuring all fields are valid.

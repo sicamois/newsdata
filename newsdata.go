@@ -233,7 +233,7 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 func (c *baseClient) fetchSources(endpoint string, params SourcesQueryParams) (*[]source, error) {
 	sources := &[]source{}
 
-	res, err := c.fetch(endpoint, params)
+	res, err := c.fetch(endpoint, &params)
 	if err != nil {
 		return nil, err
 	}
