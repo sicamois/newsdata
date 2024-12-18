@@ -151,9 +151,11 @@ type sourcesResponse struct {
 
 // errorResponse represents the API response when an error happened.
 type errorResponse struct {
-	Status  string `json:"status"`  // Response status ("error")
-	Message string `json:"message"` // Error message
-	Code    string `json:"code"`    // Error code
+	Status string `json:"status"` // Response status ("error")
+	Error  struct {
+		Message string `json:"message"` // Error message
+		Code    string `json:"code"`    // Error code
+	} `json:"results"`
 }
 
 type SentimentStats struct {
@@ -263,7 +265,7 @@ func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 		if err := json.Unmarshal(body, &errorData); err != nil {
 			return nil, err
 		}
-		return nil, errors.New(errorData.Message)
+		return nil, errors.New(errorData.Error.Message)
 	}
 
 	return body, nil

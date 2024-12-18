@@ -40,7 +40,7 @@ func TestGetBreakingNews(t *testing.T) {
 	}
 	articles, err := client.GetBreakingNews(query)
 	if err != nil {
-		t.Fatalf("Error fetching latest news: %v", err)
+		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
 	if len(*articles) == 0 || len(*articles) > 1 {
 		t.Fatalf("Invalid number of articles: %d - should 1", len(*articles))
@@ -54,7 +54,7 @@ func TestGetSources(t *testing.T) {
 	}
 	sources, err := client.GetSources(options)
 	if err != nil {
-		t.Fatalf("Error fetching sources: %v", err)
+		t.Fatalf("Error fetching Sources: %v", err)
 	}
 	if len(*sources) == 0 {
 		t.Fatalf("No sources found")
