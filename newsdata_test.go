@@ -30,7 +30,7 @@ func APIKey(t *testing.T) string {
 }
 
 func TestClientInitialization(t *testing.T) {
-	client := NewClient("xxx")
+	client := NewClient("xxx", 10)
 	if client.LatestNews.endpoint != "/latest" {
 		t.Fatalf("LatestNews endpoint is not /latest")
 	}
@@ -46,8 +46,7 @@ func TestClientInitialization(t *testing.T) {
 }
 
 func TestSearchLatestNews(t *testing.T) {
-	client := NewClient(APIKey(t))
-	client.LimitResultsToFirst(1)
+	client := NewClient(APIKey(t), 1)
 
 	articles, err := client.LatestNews.Search("")
 	if err != nil {
@@ -62,8 +61,7 @@ func TestSearchLatestNews(t *testing.T) {
 }
 
 func TestAdvancedSearchLatestNews(t *testing.T) {
-	client := NewClient(APIKey(t))
-	client.LimitResultsToFirst(1)
+	client := NewClient(APIKey(t), 1)
 	options := NewsQueryOptions{
 		Languages:  []string{"en"},
 		Categories: []string{"technology"},

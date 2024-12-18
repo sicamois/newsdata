@@ -120,14 +120,16 @@ func (t *DateTime) After(other time.Time) bool {
 }
 
 // newBaseClient creates a new baseClient with default settings.
-func newBaseClient(apiKey string) *baseClient {
+// nbArticlesMax is the maximum number of articles to fetch. If set to 0, no limit is applied.
+func newBaseClient(apiKey string, nbArticlesMax int) *baseClient {
 	return &baseClient{
 		APIKey:  apiKey,
 		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		Logger: slog.Default(),
+		Logger:     slog.Default(),
+		maxResults: nbArticlesMax,
 	}
 }
 
@@ -272,8 +274,8 @@ type newsdataClient struct {
 }
 
 // NewNewsdataClient creates a new instance of NewsdataClient.
-func NewClient(apiKey string) *newsdataClient {
-	baseClient := newBaseClient(apiKey)
+func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
+	baseClient := newBaseClient(apiKey, nbArticlesMax)
 	return &newsdataClient{
 		baseClient: baseClient,
 		logger:     &baseClient.Logger,
@@ -324,10 +326,10 @@ func (c *newsdataClient) DisableDebug() {
 	c.baseClient.Logger = NewCustomLogger(w, slog.LevelInfo)
 }
 
-// LimitResultsToFirst limits the number of results returned by the client.
-func (c *newsdataClient) LimitResultsToFirst(n int) error {
+// setNbArticlesMax limits the number of results returned by the client.
+func (c *newsdataClient) setNbArticlesMax(n int) error {
 	if n < 0 {
-		return fmt.Errorf("max returned results must be positive")
+		return fmt.Errorf("Nb articles max must be positive")
 	}
 	c.baseClient.maxResults = n
 	return nil
