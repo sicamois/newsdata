@@ -29,26 +29,15 @@ func APIKey(t *testing.T) string {
 	return apiKey
 }
 
-func TestClientInitialization(t *testing.T) {
-	client := NewClient("xxx", 10)
-	if client.LatestNews.endpoint != "/latest" {
-		t.Fatalf("LatestNews endpoint is not /latest")
-	}
-	if client.CryptoNews.endpoint != "/crypto" {
-		t.Fatalf("CryptoNews endpoint is not /crypto")
-	}
-	if client.NewsArchive.endpoint != "/archive" {
-		t.Fatalf("NewsArchive endpoint is not /archive")
-	}
-	if client.Sources.endpoint != "/sources" {
-		t.Fatalf("Sources endpoint is not /sources")
-	}
-}
-
-func TestSearchLatestNews(t *testing.T) {
+func TestGetBreakingNews(t *testing.T) {
 	client := NewClient(APIKey(t), 1)
-
-	articles, err := client.LatestNews.Search("")
+	query := BreakingNewsQuery{
+		Query:      "artificial intelligence",
+		Languages:  []string{"en"},
+		Categories: []string{"technology"},
+		Size:       1,
+	}
+	articles, err := client.GetBreakingNews(query)
 	if err != nil {
 		t.Fatalf("Error fetching latest news: %v", err)
 	}
@@ -60,13 +49,16 @@ func TestSearchLatestNews(t *testing.T) {
 	}
 }
 
-func TestAdvancedSearchLatestNews(t *testing.T) {
+// unavailable in free plan
+/*
+func TestGetHistoricalNews(t *testing.T) {
 	client := NewClient(APIKey(t), 1)
-	options := NewsQueryOptions{
+	query := HistoricalNewsQuery{
+		Query:      "artificial intelligence",
 		Languages:  []string{"en"},
 		Categories: []string{"technology"},
 	}
-	articles, err := client.LatestNews.AdvancedSearch("artificial intelligence", options)
+	articles, err := client.GetHistoricalNews(query)
 	if err != nil {
 		t.Fatalf("Error fetching latest news: %v", err)
 	}
@@ -77,3 +69,41 @@ func TestAdvancedSearchLatestNews(t *testing.T) {
 		t.Fatalf("More than one article found")
 	}
 }
+
+func TestGetSources(t *testing.T) {
+	client := NewClient(APIKey(t), 1)
+	query := SourcesQuery{
+		Country: "us",
+	}
+	sources, err := client.GetSources(query)
+	if err != nil {
+		t.Fatalf("Error fetching latest news: %v", err)
+	}
+	if len(*sources) == 0 {
+		t.Fatalf("No articles found")
+	}
+	if len(*sources) > 1 {
+		t.Fatalf("More than one article found")
+	}
+}
+
+func TestGetCryptoNews(t *testing.T) {
+	client := NewClient(APIKey(t), 1)
+	query := CryptoNewsQuery{
+		Query:     "bitcoin",
+		Languages: []string{"en"},
+		Tags:      []string{"blockchain"},
+		Sentiment: "positive",
+	}
+	articles, err := client.GetCryptoNews(query)
+	if err != nil {
+		t.Fatalf("Error fetching latest news: %v", err)
+	}
+	if len(*articles) == 0 {
+		t.Fatalf("No articles found")
+	}
+	if len(*articles) > 1 {
+		t.Fatalf("More than one article found")
+	}
+}
+*/

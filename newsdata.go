@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// baseClient handles the HTTP client configuration.
-type baseClient struct {
+// newsdataClient handles the HTTP client configuration.
+type newsdataClient struct {
 	APIKey     string
 	BaseURL    string
 	HTTPClient *http.Client
@@ -219,10 +219,11 @@ func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
 }
 
-// newBaseClient creates a new baseClient with default settings.
-// nbArticlesMax is the maximum number of articles to fetch. If set to 0, no limit is applied.
-func newBaseClient(apiKey string, nbArticlesMax int) *baseClient {
-	return &baseClient{
+// NewClient creates a new newsdataClient with default settings.
+// nbArticlesMax is the maximum number of articles to fetch.
+// If set to 0, no limit is applied.
+func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
+	return &newsdataClient{
 		APIKey:  apiKey,
 		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
@@ -234,35 +235,35 @@ func newBaseClient(apiKey string, nbArticlesMax int) *baseClient {
 }
 
 // SetTimeout sets the HTTP client timeout.
-func (c *baseClient) SetTimeout(timeout time.Duration) {
+func (c *newsdataClient) SetTimeout(timeout time.Duration) {
 	c.HTTPClient.Timeout = timeout
 }
 
 // Logger returns the client logger
-func (c *baseClient) GetLogger() *slog.Logger {
+func (c *newsdataClient) GetLogger() *slog.Logger {
 	return c.Logger
 }
 
 // CustomizeLogging customizes the logger used by the client.
-func (c *baseClient) CustomizeLogging(w io.Writer, level slog.Level) {
+func (c *newsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
 	customLogger := NewCustomLogger(w, level)
 	c.Logger = customLogger
 }
 
 // EnableDebug enables debug logging.
-func (c *baseClient) EnableDebug() {
+func (c *newsdataClient) EnableDebug() {
 	w := c.Logger.Handler().(*LevelHandler).writer
 	c.Logger = NewCustomLogger(w, slog.LevelDebug)
 }
 
 // DisableDebug disables debug logging.
-func (c *baseClient) DisableDebug() {
+func (c *newsdataClient) DisableDebug() {
 	w := c.Logger.Handler().(*LevelHandler).writer
 	c.Logger = NewCustomLogger(w, slog.LevelInfo)
 }
 
 // setNbArticlesMax limits the number of results returned by the client.
-func (c *baseClient) setNbArticlesMax(n int) error {
+func (c *newsdataClient) setNbArticlesMax(n int) error {
 	if n < 0 {
 		return fmt.Errorf("Nb articles max must be positive")
 	}
@@ -271,7 +272,7 @@ func (c *baseClient) setNbArticlesMax(n int) error {
 }
 
 // fetch sends an HTTP request and return the body as []byte.
-func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) {
+func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.BaseURL + endpoint)
 	if err != nil {
@@ -280,7 +281,7 @@ func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) 
 
 	// Convert struct-based query parameters to URL query parameters.
 	query := reqURL.Query()
-	paramMap, err := structToMap(params)
+	paramMap, err := structToMap(q)
 	if err != nil {
 		return nil, err
 	}
@@ -315,33 +316,26 @@ func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) 
 	return body, nil
 }
 
-func (c *baseClient) fetchNewsResponse(endpoint string, params interface{}) (*newsResponse, error) {
-	body, err := c.fetch(endpoint, params)
-	if err != nil {
-		return nil, err
-	}
-	// Decode the JSON response.
-	var data newsResponse
-	if err := json.Unmarshal(body, &data); err != nil { // Parse []byte to go struct pointer
-		return nil, err
-	}
-	return &data, nil
-}
-
 // fetchArticles fetches news articles from the API.
-func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResults int) (*[]article, error) {
+func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]article, error) {
 	articles := &[]article{}
 
 	page := ""
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for len(*articles) < maxResults || maxResults == 0 {
-		params.setPage(page)
+		query.setPage(page) // Set the page parameter
 
-		res, err := c.fetchNewsResponse(endpoint, params)
+		body, err := c.fetch(endpoint, query)
 		if err != nil {
 			return nil, err
 		}
+
+		var res newsResponse
+		if err := json.Unmarshal(body, &res); err != nil {
+			return nil, err
+		}
+
 		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#articles", len(res.Articles), "nextPage", res.NextPage)
 
 		if maxResults == 0 || res.TotalResults < maxResults {
@@ -373,10 +367,10 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 }
 
 // fetchSources fetches news sources from the API.
-func (c *baseClient) fetchSources(endpoint string, params *SourcesQuery) (*[]source, error) {
+func (c *newsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]source, error) {
 	sources := &[]source{}
 
-	body, err := c.fetch(endpoint, params)
+	body, err := c.fetch(endpoint, query)
 	if err != nil {
 		return nil, err
 	}
@@ -396,21 +390,21 @@ func (c *baseClient) fetchSources(endpoint string, params *SourcesQuery) (*[]sou
 }
 
 // GetBreakingNews fetches news based on query parameters.
-func (c *baseClient) GetBreakingNews(params BreakingNewsQuery) (*[]article, error) {
-	return c.fetchArticles("/latest", &params, c.maxResults)
+func (c *newsdataClient) GetBreakingNews(query BreakingNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/latest", &query, c.maxResults)
 }
 
 // GetCryptoNews fetches crypto news based on query parameters.
-func (c *baseClient) GetCryptoNews(params CryptoNewsQuery) (*[]article, error) {
-	return c.fetchArticles("/crypto", &params, c.maxResults)
+func (c *newsdataClient) GetCryptoNews(query CryptoNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/crypto", &query, c.maxResults)
 }
 
 // GetHistoricalNews fetches news archive based on query parameters.
-func (c *baseClient) GetHistoricalNews(params HistoricalNewsQuery) (*[]article, error) {
-	return c.fetchArticles("/archive", &params, c.maxResults)
+func (c *newsdataClient) GetHistoricalNews(query HistoricalNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/archive", &query, c.maxResults)
 }
 
 // GetSources fetches news archive based on query parameters.
-func (c *baseClient) GetSources(params SourcesQuery) (*[]source, error) {
-	return c.fetchSources("/sources", &params)
+func (c *newsdataClient) GetSources(query SourcesQuery) (*[]source, error) {
+	return c.fetchSources("/sources", &query)
 }
