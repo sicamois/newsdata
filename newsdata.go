@@ -1,7 +1,6 @@
 package newsdata
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,20 +8,144 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"time"
 )
 
-type Level int
-
-// baseClient handles the HTTP client configuration.
-type baseClient struct {
+// newsdataClient handles the HTTP client configuration.
+type newsdataClient struct {
 	APIKey     string
 	BaseURL    string
 	HTTPClient *http.Client
 	Logger     *slog.Logger
 	maxResults int
+}
+
+// pageSetter is an interface for setting the page parameter.
+type pageSetter interface {
+	setPage(string)
+}
+
+// BreakingNewsQuery represents the query parameters for the news endpoint.
+type BreakingNewsQuery struct {
+	Id                []string `query:"id"`              // List of article IDs
+	Query             string   `query:"q"`               // Search term
+	QueryInTitle      string   `query:"qInTitle"`        // Search term in article title
+	QueryInMetadata   string   `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Timeframe         string   `query:"timeframe"`       // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
+	Categories        []string `query:"category"`        // List of categories (e.g., ["technology", "sports"])
+	ExcludeCategories []string `query:"excludecategory"` // List of categories to exclude
+	Countries         []string `query:"country"`         // List of country codes (e.g., ["us", "uk"])
+	Languages         []string `query:"language"`        // List of language codes (e.g., ["en", "es"])
+	Domains           []string `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls        []string `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains    []string `query:"excludedomain"`   // List of domains to exclude
+	ExcludeFields     []string `query:"excludefield"`    // List of fields to exclude
+	PriorityDomain    string   `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image             string   `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video             string   `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	RemoveDuplicates  bool     `query:"removeduplicate"` // If set to true, duplicate articles will be removed from the results
+	Size              int      `query:"size"`            // Number of results per page
+	Page              string   `query:"page"`            // Page ref
+}
+
+func (p *BreakingNewsQuery) setPage(page string) {
+	p.Page = page
+}
+
+// CryptoNewsQuery represents the query parameters for the crypto news endpoint.
+type CryptoNewsQuery struct {
+	Id               []string  `query:"id"`              // List of article IDs
+	Coins            []string  `query:"coins"`           // List of coins (e.g., ["btc","eth","usdt"])
+	From             time.Time `query:"from_date"`       // From date
+	To               time.Time `query:"to_date"`         // To date
+	Query            string    `query:"q"`               // Search term
+	QueryInTitle     string    `query:"qInTitle"`        // Search term in article title
+	QueryInMetadata  string    `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Timeframe        string    `query:"timeframe"`       // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
+	Languages        []string  `query:"language"`        // List of language codes (e.g., ["en", "es"])
+	Tags             []string  `query:"tag"`             // List of tags (e.g., ["blockchain", "liquidity", "scam"])
+	Sentiment        string    `query:"sentiment"`       // List of sentiment : "positive", "negative" or "neutral"]
+	Domains          []string  `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls       []string  `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains   []string  `query:"excludedomain"`   // List of domains to exclude
+	ExcludeFields    []string  `query:"excludefield"`    // List of fields to exclude
+	PriorityDomain   string    `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone         string    `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent      string    `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image            string    `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video            string    `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	RemoveDuplicates bool      `query:"removeduplicate"` // If set to true, duplicate articles will be removed from the results
+	Size             int       `query:"size"`            // Number of results per page
+	Page             string    `query:"page"`            // Page ref
+}
+
+func (p *CryptoNewsQuery) setPage(page string) {
+	p.Page = page
+}
+
+// HistoricalNewsQuery represents the query parameters for the news archive endpoint.
+type HistoricalNewsQuery struct {
+	Id                []string `query:"id"`              // List of article IDs
+	From              DateTime `query:"from_date"`       // From date
+	To                DateTime `query:"to_date"`         // To date
+	Query             string   `query:"q"`               // Search term
+	QueryInTitle      string   `query:"qInTitle"`        // Search term in article title
+	QueryInMetadata   string   `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Categories        []string `query:"category"`        // List of categories (e.g., ["technology", "sports"])
+	ExcludeCategories []string `query:"excludecategory"` // List of categories to exclude
+	Countries         []string `query:"country"`         // List of country codes (e.g., ["us", "uk"])
+	Languages         []string `query:"language"`        // List of language codes (e.g., ["en", "es"])
+	Domains           []string `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls        []string `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains    []string `query:"excludedomain"`   // List of domains to exclude
+	ExcludeFields     []string `query:"excludefield"`    // List of fields to exclude
+	PriorityDomain    string   `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image             string   `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video             string   `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	Size              int      `query:"size"`            // Number of results per page
+	Page              string   `query:"page"`            // Page ref
+}
+
+func (p *HistoricalNewsQuery) setPage(page string) {
+	p.Page = page
+}
+
+// SourcesQuery represents the query parameters for the news archive endpoint.
+type SourcesQuery struct {
+	Country        string `query:"country"`        // Country codes (e.g. "us", "uk")
+	Category       string `query:"category"`       // Category (e.g. "technology", "sports")
+	Language       string `query:"language"`       // Language code (e.g. "en", "es")
+	PriorityDomain string `query:"prioritydomain"` // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	DomainUrl      string `query:"domainurl"`      //Domain URLs (e.g. "nytimes.com", "bbc.com", "bbc.co.uk")
+}
+
+// newsResponse represents the API response.
+type newsResponse struct {
+	Status       string    `json:"status"`
+	TotalResults int       `json:"totalResults"`
+	Articles     []article `json:"results"`
+	NextPage     string    `json:"nextPage"`
+}
+
+// sourcesResponse represents the news sources API response.
+type sourcesResponse struct {
+	Status       string   `json:"status"`
+	TotalResults int      `json:"totalResults"`
+	Sources      []source `json:"results"`
+}
+
+// errorResponse represents the error response.
+type errorResponse struct {
+	Status string `json:"status"`
+	Error  struct {
+		Message string `json:"message"`
+		Code    string `json:"code"`
+	} `json:"results"`
 }
 
 // article represents a news article.
@@ -54,26 +177,6 @@ type article struct {
 	Duplicate      bool     `json:"duplicate"`
 }
 
-type DateTime struct {
-	time.Time
-}
-
-// newsResponse represents the API response.
-type newsResponse struct {
-	Status       string    `json:"status"`
-	TotalResults int       `json:"totalResults"`
-	Articles     []article `json:"results"`
-	NextPage     string    `json:"nextPage"`
-}
-
-type errorResponse struct {
-	Status string `json:"status"`
-	Error  struct {
-		Message string `json:"message"`
-		Code    string `json:"code"`
-	} `json:"results"`
-}
-
 // source represents a news source.
 type source struct {
 	Id          string   `json:"id"`
@@ -88,11 +191,8 @@ type source struct {
 	LastFetch   DateTime `json:"last_fetch"`
 }
 
-// sourcesResponse represents the news sources API response.
-type sourcesResponse struct {
-	Status       string   `json:"status"`
-	TotalResults int      `json:"totalResults"`
-	Sources      []source `json:"results"`
+type DateTime struct {
+	time.Time
 }
 
 func (t *DateTime) UnmarshalJSON(b []byte) error {
@@ -119,22 +219,60 @@ func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
 }
 
-// newBaseClient creates a new baseClient with default settings.
-// nbArticlesMax is the maximum number of articles to fetch. If set to 0, no limit is applied.
-func newBaseClient(apiKey string, nbArticlesMax int) *baseClient {
-	return &baseClient{
+// NewClient creates a new newsdataClient with default settings.
+// nbArticlesMax is the maximum number of articles to fetch.
+// If set to 0, no limit is applied.
+func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
+	return &newsdataClient{
 		APIKey:  apiKey,
 		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 5 * time.Second,
 		},
 		Logger:     slog.Default(),
 		maxResults: nbArticlesMax,
 	}
 }
 
-// fetch sends an HTTP request and decodes the response.
-func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) {
+// SetTimeout sets the HTTP client timeout.
+func (c *newsdataClient) SetTimeout(timeout time.Duration) {
+	c.HTTPClient.Timeout = timeout
+}
+
+// Logger returns the client logger
+func (c *newsdataClient) GetLogger() *slog.Logger {
+	return c.Logger
+}
+
+// CustomizeLogging customizes the logger used by the client.
+func (c *newsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
+	customLogger := NewCustomLogger(w, level)
+	c.Logger = customLogger
+}
+
+// EnableDebug enables debug logging.
+func (c *newsdataClient) EnableDebug() {
+	w := c.Logger.Handler().(*LevelHandler).writer
+	c.Logger = NewCustomLogger(w, slog.LevelDebug)
+}
+
+// DisableDebug disables debug logging.
+func (c *newsdataClient) DisableDebug() {
+	w := c.Logger.Handler().(*LevelHandler).writer
+	c.Logger = NewCustomLogger(w, slog.LevelInfo)
+}
+
+// setNbArticlesMax limits the number of results returned by the client.
+func (c *newsdataClient) setNbArticlesMax(n int) error {
+	if n < 0 {
+		return fmt.Errorf("Nb articles max must be positive")
+	}
+	c.maxResults = n
+	return nil
+}
+
+// fetch sends an HTTP request and return the body as []byte.
+func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.BaseURL + endpoint)
 	if err != nil {
@@ -143,7 +281,7 @@ func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) 
 
 	// Convert struct-based query parameters to URL query parameters.
 	query := reqURL.Query()
-	paramMap, err := structToQuery(params)
+	paramMap, err := structToMap(q)
 	if err != nil {
 		return nil, err
 	}
@@ -178,38 +316,26 @@ func (c *baseClient) fetch(endpoint string, params interface{}) ([]byte, error) 
 	return body, nil
 }
 
-func (c *baseClient) fetchNews(endpoint string, params interface{}) (*newsResponse, error) {
-	body, err := c.fetch(endpoint, params)
-	if err != nil {
-		return nil, err
-	}
-	// Decode the JSON response.
-	var data newsResponse
-	if err := json.Unmarshal(body, &data); err != nil { // Parse []byte to go struct pointer
-		return nil, err
-	}
-	return &data, nil
-}
-
-// pageSetter is an interface for setting the page parameter.
-type pageSetter interface {
-	setPage(string)
-}
-
 // fetchArticles fetches news articles from the API.
-func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResults int) (*[]article, error) {
+func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]article, error) {
 	articles := &[]article{}
 
 	page := ""
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for len(*articles) < maxResults || maxResults == 0 {
-		params.setPage(page)
+		query.setPage(page) // Set the page parameter
 
-		res, err := c.fetchNews(endpoint, params)
+		body, err := c.fetch(endpoint, query)
 		if err != nil {
 			return nil, err
 		}
+
+		var res newsResponse
+		if err := json.Unmarshal(body, &res); err != nil {
+			return nil, err
+		}
+
 		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#articles", len(res.Articles), "nextPage", res.NextPage)
 
 		if maxResults == 0 || res.TotalResults < maxResults {
@@ -241,10 +367,10 @@ func (c *baseClient) fetchArticles(endpoint string, params pageSetter, maxResult
 }
 
 // fetchSources fetches news sources from the API.
-func (c *baseClient) fetchSources(endpoint string, params *SourcesQueryParams) (*[]source, error) {
+func (c *newsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]source, error) {
 	sources := &[]source{}
 
-	body, err := c.fetch(endpoint, params)
+	body, err := c.fetch(endpoint, query)
 	if err != nil {
 		return nil, err
 	}
@@ -263,249 +389,22 @@ func (c *baseClient) fetchSources(endpoint string, params *SourcesQueryParams) (
 	return sources, nil
 }
 
-// NewsdataClient is the main client that composes all services.
-type newsdataClient struct {
-	baseClient  *baseClient
-	logger      **slog.Logger
-	LatestNews  *latestNewsService
-	CryptoNews  *cryptoNewsService
-	NewsArchive *newsArchiveService
-	Sources     *sourcesService
+// GetBreakingNews fetches news based on query parameters.
+func (c *newsdataClient) GetBreakingNews(query BreakingNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/latest", &query, c.maxResults)
 }
 
-// NewNewsdataClient creates a new instance of NewsdataClient.
-func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
-	baseClient := newBaseClient(apiKey, nbArticlesMax)
-	return &newsdataClient{
-		baseClient: baseClient,
-		logger:     &baseClient.Logger,
-		LatestNews: &latestNewsService{
-			client:   baseClient,
-			endpoint: "/latest",
-		},
-		CryptoNews: &cryptoNewsService{
-			client:   baseClient,
-			endpoint: "/crypto",
-		},
-		NewsArchive: &newsArchiveService{
-			client:   baseClient,
-			endpoint: "/archive",
-		},
-		Sources: &sourcesService{
-			client:   baseClient,
-			endpoint: "/sources",
-		},
-	}
+// GetCryptoNews fetches crypto news based on query parameters.
+func (c *newsdataClient) GetCryptoNews(query CryptoNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/crypto", &query, c.maxResults)
 }
 
-// SetTimeout sets the HTTP client timeout.
-func (c *newsdataClient) SetTimeout(timeout time.Duration) {
-	c.baseClient.HTTPClient.Timeout = timeout
+// GetHistoricalNews fetches news archive based on query parameters.
+func (c *newsdataClient) GetHistoricalNews(query HistoricalNewsQuery) (*[]article, error) {
+	return c.fetchArticles("/archive", &query, c.maxResults)
 }
 
-// Logger returns the client logger
-func (c *newsdataClient) Logger() *slog.Logger {
-	return c.baseClient.Logger
-}
-
-// CustomizeLogging customizes the logger used by the client.
-func (c *newsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
-	customLogger := NewCustomLogger(w, level)
-	c.baseClient.Logger = customLogger
-}
-
-// EnableDebug enables debug logging.
-func (c *newsdataClient) EnableDebug() {
-	w := c.baseClient.Logger.Handler().(*LevelHandler).writer
-	c.baseClient.Logger = NewCustomLogger(w, slog.LevelDebug)
-}
-
-// DisableDebug disables debug logging.
-func (c *newsdataClient) DisableDebug() {
-	w := c.baseClient.Logger.Handler().(*LevelHandler).writer
-	c.baseClient.Logger = NewCustomLogger(w, slog.LevelInfo)
-}
-
-// setNbArticlesMax limits the number of results returned by the client.
-func (c *newsdataClient) setNbArticlesMax(n int) error {
-	if n < 0 {
-		return fmt.Errorf("Nb articles max must be positive")
-	}
-	c.baseClient.maxResults = n
-	return nil
-}
-
-//
-// PARAMETERS HELPERS
-//
-
-// isValidCategory checks if a category is in the allowed list.
-func isValidCategory(category string) bool {
-	for _, allowed := range allowedCategories {
-		if category == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidCountry checks if a country code is in the allowed list.
-func isValidCountry(countryCode string) bool {
-	for _, allowed := range allowedCountries {
-		if countryCode == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidLanguage checks if a language code is in the allowed list.
-func isValidLanguage(languageCode string) bool {
-	for _, allowed := range allowedLanguages {
-		if languageCode == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidField checks if a field exists in the article struct.
-func isValidField(field string) bool {
-	articleFields := make([]string, 0)
-	t := reflect.TypeOf(article{})
-	for i := 0; i < t.NumField(); i++ {
-		articleFields = append(articleFields, t.Field(i).Name)
-	}
-	for _, allowed := range articleFields {
-		if field == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidPriorityDomain checks if a priority domain is in the allowed list.
-func isValidPriorityDomain(priorityDomain string) bool {
-	for _, allowed := range allowedPriorityDomain {
-		if priorityDomain == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidSentiment checks if a sentiment is in the allowed list.
-func isValidSentiment(sentiment string) bool {
-	for _, allowed := range allowedSentiment {
-		if sentiment == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidTag checks if a tag is in the allowed list.
-func isValidTag(tag string) bool {
-	for _, allowed := range allowedTags {
-		if tag == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// structToQuery converts a struct into a map of query parameters, handling slices.
-func structToQuery(params interface{}) (map[string]string, error) {
-
-	result := make(map[string]string)
-	// dereference pointer with Elem() if needed
-	v := reflect.ValueOf(params).Elem()
-	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("params must be a struct")
-	}
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		field := t.Field(i)
-		value := v.Field(i)
-		tag := field.Tag.Get("query")
-		if tag == "" {
-			tag = strings.ToLower(field.Name)
-		}
-		if value.IsZero() {
-			continue
-		}
-		if tag == "removeduplicate" {
-			if value.Bool() {
-				result[tag] = "1"
-			}
-			continue
-		}
-		switch value.Kind() {
-		case reflect.Slice:
-			// Join slices into comma-separated strings
-			sliceValues := make([]string, value.Len())
-			for j := 0; j < value.Len(); j++ {
-				sliceValues[j] = fmt.Sprintf("%v", value.Index(j).Interface())
-			}
-			result[tag] = strings.Join(sliceValues, ",")
-		default:
-			result[tag] = fmt.Sprintf("%v", value.Interface())
-		}
-	}
-	return result, nil
-}
-
-//
-// LOGGER
-//
-
-// A LevelHandler wraps a Handler with an Enabled method
-// that returns false for levels below a minimum.
-type LevelHandler struct {
-	level   slog.Leveler
-	handler slog.Handler
-	writer  io.Writer
-}
-
-// NewLevelHandler returns a LevelHandler with the given level.
-// All methods except Enabled delegate to h.
-func newLevelHandler(level slog.Leveler, h slog.Handler, w io.Writer) *LevelHandler {
-	// Optimization: avoid chains of LevelHandlers.
-	if lh, ok := h.(*LevelHandler); ok {
-		h = lh.Handler()
-	}
-	return &LevelHandler{level, h, w}
-}
-
-// Enabled implements Handler.Enabled by reporting whether
-// level is at least as large as h's level.
-func (h *LevelHandler) Enabled(_ context.Context, level slog.Level) bool {
-	return level >= h.level.Level()
-}
-
-// Handle implements Handler.Handle.
-func (h *LevelHandler) Handle(ctx context.Context, r slog.Record) error {
-	return h.handler.Handle(ctx, r)
-}
-
-// WithAttrs implements Handler.WithAttrs.
-func (h *LevelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return newLevelHandler(h.level, h.handler.WithAttrs(attrs), h.writer)
-}
-
-// WithGroup implements Handler.WithGroup.
-func (h *LevelHandler) WithGroup(name string) slog.Handler {
-	return newLevelHandler(h.level, h.handler.WithGroup(name), h.writer)
-}
-
-// Handler returns the Handler wrapped by h.
-func (h *LevelHandler) Handler() slog.Handler {
-	return h.handler
-}
-
-// Create a new logger that writes on the chosen io.writer with the given level.
-func NewCustomLogger(w io.Writer, level slog.Level) *slog.Logger {
-	th := slog.NewTextHandler(w, nil)
-	logger := slog.New(newLevelHandler(level, th, w))
-	return logger
+// GetSources fetches news archive based on query parameters.
+func (c *newsdataClient) GetSources(query SourcesQuery) (*[]source, error) {
+	return c.fetchSources("/sources", &query)
 }

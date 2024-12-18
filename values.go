@@ -1,13 +1,13 @@
 package newsdata
 
-// allowedCategories defines the valid categories for the NewsQueryParams.
+// allowedCategories defines the valid categories for the BreakingNewsQuery.
 var allowedCategories = []string{
 	"business", "crime", "domestic", "education", "entertainment",
 	"environment", "food", "health", "lifestyle", "other",
 	"politics", "science", "sports", "technology", "top", "tourism", "world",
 }
 
-// allowedCountries defines the valid countries for the NewsQueryParams.
+// allowedCountries defines the valid countries for the BreakingNewsQuery.
 var allowedCountries = []string{
 	"af", "al", "dz", "ad", "ao", "ar",
 	"am", "au", "at", "az", "bs", "bh",
@@ -46,22 +46,22 @@ var allowedCountries = []string{
 	"zm", "zw",
 }
 
-// allowedLanguages defines the valid languages for the NewsQueryParams.
+// allowedLanguages defines the valid languages for the BreakingNewsQuery.
 var allowedLanguages = []string{
 	"af", "sq", "am", "ar", "hy", "as", "az", "bm", "eu", "be", "bn", "bs", "bg", "my", "ca", "ckb", "zh", "hr", "cs", "da", "nl", "en", "et", "pi", "fi", "fr", "gl", "ka", "de", "el", "gu", "ha", "he", "hi", "hu", "is", "id", "it", "jp", "kn", "kz", "kh", "rw", "ko", "ku", "lv", "lt", "lb", "mk", "ms", "ml", "mt", "mi", "mr", "mn", "ne", "no", "or", "ps", "fa", "pl", "pt", "pa", "ro", "ru", "sm", "sr", "sn", "sd", "si", "sk", "sl", "so", "es", "sw", "sv", "tg", "ta", "te", "th", "zht", "tr", "tk", "uk", "ur", "uz", "vi", "cy", "zu",
 }
 
-// allowedPriorityDomain defines the valid priority domains for the NewsQueryParams.
+// allowedPriorityDomain defines the valid priority domains for the BreakingNewsQuery.
 var allowedPriorityDomain = []string{
 	"top", "medium", "low",
 }
 
-// allowedSentiment defines the valid sentiment for the NewsQueryParams.
+// allowedSentiment defines the valid sentiment for the BreakingNewsQuery.
 var allowedSentiment = []string{
 	"positive", "negative", "neutral",
 }
 
-// allowedTags defines the valid tags for the NewsQueryParams.
+// allowedTags defines the valid tags for the BreakingNewsQuery.
 var allowedTags = []string{
 	"adoption", "blockchain", "coin_fundamental", "competition", "developers_community", "economy", "education", "exchange", "founders_investors", "general", "geopolitics", "global_markets", "government", "liquidity", "mining", "scam", "security_privacy", "sentiments", "supply", "technical_analysis", "technology",
 }
