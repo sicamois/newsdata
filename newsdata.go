@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -197,13 +198,14 @@ type source struct {
 // nbArticlesMax is the maximum number of articles to fetch.
 // If set to 0, no limit is applied.
 func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
+	logger := NewCustomLogger(os.Stdout, slog.LevelInfo)
 	return &newsdataClient{
 		APIKey:  apiKey,
 		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		Logger:     slog.Default(),
+		Logger:     logger,
 		maxResults: nbArticlesMax,
 	}
 }
@@ -253,8 +255,8 @@ func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	return body, nil
 }
 
-func (c *newsdataClient) fetchNews(endpoint string, params interface{}) (*newsResponse, error) {
-	body, err := c.fetch(endpoint, params)
+func (c *newsdataClient) fetchNews(endpoint string, query interface{}) (*newsResponse, error) {
+	body, err := c.fetch(endpoint, query)
 	if err != nil {
 		return nil, err
 	}
