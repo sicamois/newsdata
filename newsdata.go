@@ -37,6 +37,7 @@ type Tag struct {
 }
 
 // BreakingNewsQuery represents the query parameters for the breaking news endpoint.
+// see https://newsdata.io/documentation/#latest-news
 type BreakingNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Query             string   `query:"q"`               // Main search term
@@ -65,6 +66,7 @@ type BreakingNewsQuery struct {
 }
 
 // HistoricalNewsQuery represents the query parameters for the historical news endpoint.
+// see https://newsdata.io/documentation/#news-archive
 type HistoricalNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Query             string   `query:"q"`               // Main search term
@@ -90,6 +92,7 @@ type HistoricalNewsQuery struct {
 }
 
 // CryptoNewsQuery represents the query parameters for the crypto news endpoint.
+// see https://newsdata.io/documentation/#crypto-news
 type CryptoNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Coins             []string `query:"coin"`            // List of coins
@@ -120,34 +123,37 @@ type CryptoNewsQuery struct {
 }
 
 // SourcesQuery represents the query parameters for the sources endpoint.
+// see https://newsdata.io/documentation/#news-sources
 type SourcesQuery struct {
-	Country        string `query:"country"` // Filter by country code
-	Language       string `query:"language"`
-	Category       string `query:"category"`
-	PriorityDomain string `query:"prioritydomain"`
-	domainurl      string `query:"domainurl"`
+	Country        string `query:"country"`        // Filter by country code
+	Language       string `query:"language"`       // Filter by language code
+	Category       string `query:"category"`       // Filter by category (e.g., "technology")
+	PriorityDomain string `query:"prioritydomain"` // Filter by priority domain (possible values: "top", "medium", "low")
+	domainurl      string `query:"domainurl"`      // Filter by domain URL (e.g., "nytimes.com")
 }
 
 // newsResponse represents the news API response.
+// see https://newsdata.io/documentation/#http_response
 type newsResponse struct {
-	Status       string    `json:"status"`
-	TotalResults int       `json:"totalResults"`
-	Articles     []article `json:"results"`
-	NextPage     string    `json:"nextPage"`
+	Status       string    `json:"status"`       // Response status ("success" or error message)
+	TotalResults int       `json:"totalResults"` // Total number of articles matching the query
+	Articles     []article `json:"results"`      // Array of articles
+	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
 // sourcesResponse represents the news sources API response.
+// see https://newsdata.io/documentation/#news-sources
 type sourcesResponse struct {
-	Status       string   `json:"status"`
-	TotalResults int      `json:"totalResults"`
-	Sources      []source `json:"results"`
+	Status       string   `json:"status"`       // Response status ("success" or error message)
+	TotalResults int      `json:"totalResults"` // Total number of news sources matching the query
+	Sources      []source `json:"results"`      // Array of news sources
 }
 
 // errorResponse represents the API response when an error happened.
 type errorResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Code    string `json:"code"`
+	Status  string `json:"status"`  // Response status ("error")
+	Message string `json:"message"` // Error message
+	Code    string `json:"code"`    // Error code
 }
 
 type SentimentStats struct {
@@ -157,6 +163,7 @@ type SentimentStats struct {
 }
 
 // article represents a news article.
+// see https://newsdata.io/documentation/#http_response
 type article struct {
 	Id             string         `json:"article_id"`
 	Title          string         `json:"title"`
@@ -186,6 +193,7 @@ type article struct {
 }
 
 // source represents a news source.
+// see https://newsdata.io/documentation/#news-sources
 type source struct {
 	Id          string   `json:"id"`
 	Name        string   `json:"name"`
