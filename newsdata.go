@@ -30,6 +30,12 @@ type DateTime struct {
 	time.Time
 }
 
+// Tags is a structure for AI tags, AI Regions to handle the case where the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS")
+type Tags []Tag
+type Tag struct {
+	string
+}
+
 // BreakingNewsQuery represents the query parameters for the breaking news endpoint.
 type BreakingNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
@@ -145,39 +151,38 @@ type errorResponse struct {
 }
 
 type SentimentStats struct {
-	Positive int `json:"positive"`
-	Neutral  int `json:"neutral"`
-	Negative int `json:"negative"`
+	Positive float64 `json:"positive"`
+	Neutral  float64 `json:"neutral"`
+	Negative float64 `json:"negative"`
 }
 
 // article represents a news article.
 type article struct {
-	Id             string   `json:"article_id"`
-	Title          string   `json:"title"`
-	Link           string   `json:"link"`
-	Keywords       []string `json:"keywords"`
-	Creator        []string `json:"creator"`
-	VideoURL       string   `json:"video_url"`
-	Description    string   `json:"description"`
-	Content        string   `json:"content"`
-	PubDate        DateTime `json:"pubDate"`
-	PubDateTZ      string   `json:"pubDateTZ"`
-	ImageURL       string   `json:"image_url"`
-	SourceId       string   `json:"source_id"`
-	SourcePriority int      `json:"source_priority"`
-	SourceName     string   `json:"source_name"`
-	SourceURL      string   `json:"source_url"`
-	SourceIconURL  string   `json:"source_icon"`
-	Language       string   `json:"language"`
-	Countries      []string `json:"country"`
-	Categories     []string `json:"category"`
-	AiTags         string   `json:"ai_tag"`
-	Sentiment      string   `json:"sentiment"`
-	SentimentStats string   `json:"sentiment_stats"`
-	AiRegions      string   `json:"ai_region"`
-	AiOrganization string   `json:"ai_org"`
-	Coin           []string `json:"coin"`
-	Duplicate      bool     `json:"duplicate"`
+	Id             string         `json:"article_id"`
+	Title          string         `json:"title"`
+	Link           string         `json:"link"`
+	Keywords       []string       `json:"keywords"`
+	Creator        []string       `json:"creator"`
+	VideoURL       string         `json:"video_url"`
+	Description    string         `json:"description"`
+	Content        string         `json:"content"`
+	PubDate        DateTime       `json:"pubDate"`
+	PubDateTZ      string         `json:"pubDateTZ"`
+	ImageURL       string         `json:"image_url"`
+	SourceId       string         `json:"source_id"`
+	SourcePriority int            `json:"source_priority"`
+	SourceName     string         `json:"source_name"`
+	SourceURL      string         `json:"source_url"`
+	SourceIconURL  string         `json:"source_icon"`
+	Language       string         `json:"language"`
+	Countries      []string       `json:"country"`
+	Categories     []string       `json:"category"`
+	AiTags         Tags           `json:"ai_tag"`
+	Sentiment      string         `json:"sentiment"`
+	SentimentStats SentimentStats `json:"sentiment_stats"`
+	AiRegions      Tags           `json:"ai_region"`
+	Coin           []string       `json:"coin"`
+	Duplicate      bool           `json:"duplicate"`
 }
 
 // source represents a news source.

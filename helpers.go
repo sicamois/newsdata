@@ -2,6 +2,7 @@ package newsdata
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,7 +13,6 @@ import (
 )
 
 // DateTime Helpers
-
 func (t *DateTime) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
@@ -35,6 +35,54 @@ func (t *DateTime) IsZero() bool {
 
 func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
+}
+
+// AiTags Helpers
+func (t *Tags) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		*t = nil
+		return nil
+	}
+	tags := strings.Split(string(b), ",")
+	*t = make([]Tag, len(tags))
+	for i, tag := range tags {
+		(*t)[i] = Tag{tag}
+	}
+	return nil
+}
+
+// SentimentStats Helpers
+func (t *SentimentStats) UnmarshalJSON(b []byte) error {
+	// If the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS"), handle it nicely
+	// Handle "null" case also
+	var msg string
+	if err := json.Unmarshal(b, &msg); err == nil {
+		*t = SentimentStats{}
+		return nil
+	}
+
+	stats := make(map[string]float64)
+	err := json.Unmarshal(b, &stats)
+	if err != nil {
+		return err
+	}
+	positive, ok := stats["positive"]
+	if !ok {
+		return fmt.Errorf("invalid sentiment stats: %v", stats)
+	}
+	neutral, ok := stats["neutral"]
+	if !ok {
+		return fmt.Errorf("invalid sentiment stats: %v", stats)
+	}
+	negative, ok := stats["negative"]
+	if !ok {
+		return fmt.Errorf("invalid sentiment stats: %v", stats)
+	}
+
+	t.Positive = positive
+	t.Neutral = neutral
+	t.Negative = negative
+	return nil
 }
 
 // Params Helpers
