@@ -210,6 +210,7 @@ type source struct {
 // newClient creates a new newsdataClient with default settings.
 // nbArticlesMax is the maximum number of articles to fetch.
 // If set to 0, no limit is applied.
+// Timeout is set to 5 seconds by default.
 func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
 	logger := NewCustomLogger(os.Stdout, slog.LevelInfo)
 	return &newsdataClient{
