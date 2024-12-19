@@ -37,6 +37,7 @@ func TestGetBreakingNews(t *testing.T) {
 		Categories: []string{
 			"technology",
 		},
+		ExcludeFields: []string{"Title"},
 	}
 	articles, err := client.GetBreakingNews(query)
 	if err != nil {
@@ -44,6 +45,11 @@ func TestGetBreakingNews(t *testing.T) {
 	}
 	if len(*articles) == 0 || len(*articles) > 1 {
 		t.Fatalf("Invalid number of articles: %d - should 1", len(*articles))
+	}
+	for _, article := range *articles {
+		if article.Title != "" {
+			t.Fatalf("Article title field is not exluded")
+		}
 	}
 }
 

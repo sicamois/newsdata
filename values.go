@@ -1,5 +1,18 @@
 package newsdata
 
+var allowedValues = map[string][]string{
+	"binaries":        allowedBinaries,
+	"categories":      allowedCategories,
+	"countries":       allowedCountries,
+	"languages":       allowedLanguages,
+	"priorityDomains": allowedPriorityDomains,
+	"sentiments":      allowedSentiments,
+	"tags":            allowedTags,
+}
+
+// allowedBinaries defines the valid values for pseudo-boolean fields.
+var allowedBinaries = []string{"1", "0"}
+
 // allowedCategories defines the valid categories for the BreakingNewsQuery.
 var allowedCategories = []string{
 	"business", "crime", "domestic", "education", "entertainment",
@@ -52,12 +65,12 @@ var allowedLanguages = []string{
 }
 
 // allowedPriorityDomain defines the valid priority domains for the BreakingNewsQuery.
-var allowedPriorityDomain = []string{
+var allowedPriorityDomains = []string{
 	"top", "medium", "low",
 }
 
 // allowedSentiment defines the valid sentiment for the BreakingNewsQuery.
-var allowedSentiment = []string{
+var allowedSentiments = []string{
 	"positive", "negative", "neutral",
 }
 

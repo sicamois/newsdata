@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -88,50 +89,6 @@ func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Params Helpers
-
-func (q *BreakingNewsQuery) setPage(page string) {
-	q.Page = page
-}
-
-func (q *CryptoNewsQuery) setPage(page string) {
-	q.Page = page
-}
-
-func (q *HistoricalNewsQuery) setPage(page string) {
-	q.Page = page
-}
-
-// isValidCategory checks if a category is in the allowed list.
-func isValidCategory(category string) bool {
-	for _, allowed := range allowedCategories {
-		if category == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidCountry checks if a country code is in the allowed list.
-func isValidCountry(countryCode string) bool {
-	for _, allowed := range allowedCountries {
-		if countryCode == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidLanguage checks if a language code is in the allowed list.
-func isValidLanguage(languageCode string) bool {
-	for _, allowed := range allowedLanguages {
-		if languageCode == allowed {
-			return true
-		}
-	}
-	return false
-}
-
 // isValidField checks if a field exists in the article struct.
 func isValidField(field string) bool {
 	articleFields := make([]string, 0)
@@ -147,303 +104,143 @@ func isValidField(field string) bool {
 	return false
 }
 
-// isValidPriorityDomain checks if a priority domain is in the allowed list.
-func isValidPriorityDomain(priorityDomain string) bool {
-	for _, allowed := range allowedPriorityDomain {
-		if priorityDomain == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidSentiment checks if a sentiment is in the allowed list.
-func isValidSentiment(sentiment string) bool {
-	for _, allowed := range allowedSentiment {
-		if sentiment == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidTag checks if a tag is in the allowed list.
-func isValidTag(tag string) bool {
-	for _, allowed := range allowedTags {
-		if tag == allowed {
-			return true
-		}
-	}
-	return false
-}
-
-// Validate validates the BreakingNewsQuery struct, ensuring all fields are valid.
-func (p *BreakingNewsQuery) Validate() error {
-	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
-		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
-	}
-	if len(p.Categories) > 0 && len(p.ExcludeCategories) > 0 {
-		return fmt.Errorf("Categories and ExcludeCategories cannot be used together")
-	}
-	if len(p.Query) > 512 {
-		return fmt.Errorf("Query cannot be longer than 512 characters")
-	}
-	if len(p.QueryInTitle) > 512 {
-		return fmt.Errorf("QueryInTitle cannot be longer than 512 characters")
-	}
-	if len(p.QueryInMetadata) > 512 {
-		return fmt.Errorf("QueryInMetadata cannot be longer than 512 characters")
-	}
-	if p.Timeframe != "" {
-		hours, err := strconv.Atoi(p.Timeframe)
+// isValidTimeframe checks if a timeframe is well-formed.
+func isValidTimeframe(timeframe string) bool {
+	hours, err := strconv.Atoi(timeframe)
+	if err != nil {
+		minValue, _ := strings.CutSuffix(timeframe, "m")
+		minutes, err := strconv.Atoi(minValue)
 		if err != nil {
-			minValue, _ := strings.CutSuffix(p.Timeframe, "m")
-			minutes, err := strconv.Atoi(minValue)
-			if err != nil {
-				return fmt.Errorf("invalid Timeframe: %s", p.Timeframe)
-			}
-			if minutes < 0 || minutes > 2880 {
-				return fmt.Errorf("Timeframe must be between 0 and 2880 minutes")
-			}
+			return false
 		}
-		if hours < 0 || hours > 48 {
-			return fmt.Errorf("Timeframe must be between 0 and 48 hours")
+		if minutes < 0 || minutes > 2880 {
+			return false
 		}
 	}
-	if len(p.Countries) > 5 {
-		return fmt.Errorf("Countries cannot be longer than 5 countries")
+	if hours < 0 || hours > 48 {
+		return false
 	}
-	for _, countryCode := range p.Countries {
-		if !isValidCountry(countryCode) {
-			return fmt.Errorf("invalid country code: %s", countryCode)
-		}
-	}
-	if len(p.Categories) > 5 {
-		return fmt.Errorf("Categories cannot be longer than 5 categories")
-	}
-	for _, category := range p.Categories {
-		if !isValidCategory(category) {
-			return fmt.Errorf("invalid category in Categories: %s", category)
-		}
-	}
-	if len(p.ExcludeCategories) > 5 {
-		return fmt.Errorf("ExcludeCategories cannot be longer than 5 categories")
-	}
-	for _, category := range p.ExcludeCategories {
-		if !isValidCategory(category) {
-			return fmt.Errorf("invalid category in ExcludeCategories: %s", category)
-		}
-	}
-	if len(p.Languages) > 5 {
-		return fmt.Errorf("Languages cannot be longer than 5 languages")
-	}
-	for _, languageCode := range p.Languages {
-		if !isValidLanguage(languageCode) {
-			return fmt.Errorf("invalid language code: %s", languageCode)
-		}
-	}
-	if len(p.Domains) > 5 {
-		return fmt.Errorf("Domains cannot be longer than 5 domains")
-	}
-	if len(p.DomainUrls) > 5 {
-		return fmt.Errorf("DomainUrls cannot be longer than 5 domain URLs")
-	}
-	if len(p.ExcludeDomains) > 5 {
-		return fmt.Errorf("ExcludeDomains cannot be longer than 5 domains")
-	}
-	for _, field := range p.ExcludeFields {
-		if !isValidField(field) {
-			return fmt.Errorf("invalid field in ExcludeFields: %s", field)
-		}
-	}
-	if p.PriorityDomain != "" && !isValidPriorityDomain(p.PriorityDomain) {
-		return fmt.Errorf("%s is not an available priority domain. Possible options are: %v", p.PriorityDomain, strings.Join(allowedPriorityDomain, ","))
-	}
-	if p.Size < 0 || p.Size > 50 {
-		return fmt.Errorf("Size must be between 1 and 50")
-	}
-	return nil
+	return true
 }
 
-// Validate validates the CryptoNewsQuery struct, ensuring all fields are valid.
-func (p *CryptoNewsQuery) Validate() error {
-	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
-		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
+// validate is a generic validator for query structs.
+func validate[T *BreakingNewsQuery | *CryptoNewsQuery | *HistoricalNewsQuery | *SourcesQuery](query T) error {
+	// dereference pointer with Elem() if needed
+	v := reflect.ValueOf(query).Elem()
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("query must be a struct")
 	}
-	if len(p.Query) > 512 {
-		return fmt.Errorf("Query cannot be longer than 512 characters")
-	}
-	if len(p.QueryInTitle) > 512 {
-		return fmt.Errorf("QueryInTitle cannot be longer than 512 characters")
-	}
-	if len(p.QueryInMetadata) > 512 {
-		return fmt.Errorf("QueryInMetadata cannot be longer than 512 characters")
-	}
-	if p.Timeframe != "" {
-		hours, err := strconv.Atoi(p.Timeframe)
-		if err != nil {
-			minValue, _ := strings.CutSuffix(p.Timeframe, "m")
-			minutes, err := strconv.Atoi(minValue)
-			if err != nil {
-				return fmt.Errorf("invalid Timeframe: %s", p.Timeframe)
-			}
-			if minutes < 0 || minutes > 2880 {
-				return fmt.Errorf("Timeframe must be between 0 and 2880 minutes")
-			}
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+		tag := field.Tag.Get("validate")
+		if value.IsZero() || tag == "" {
+			continue
 		}
-		if hours < 0 || hours > 48 {
-			return fmt.Errorf("Timeframe must be between 0 and 48 hours")
-		}
-	}
-	if len(p.Tags) > 5 {
-		return fmt.Errorf("Countries cannot be longer than 5 countries")
-	}
-	for _, tag := range p.Tags {
-		if !isValidTag(tag) {
-			return fmt.Errorf("invalid tag: %s", tag)
-		}
-	}
-	if len(p.Sentiment) > 0 && !isValidSentiment(p.Sentiment) {
-		return fmt.Errorf("invalid sentiment: %s", p.Sentiment)
-	}
-	if len(p.Languages) > 5 {
-		return fmt.Errorf("Languages cannot be longer than 5 languages")
-	}
-	for _, languageCode := range p.Languages {
-		if !isValidLanguage(languageCode) {
-			return fmt.Errorf("invalid language code: %s", languageCode)
-		}
-	}
-	if len(p.Domains) > 5 {
-		return fmt.Errorf("Domains cannot be longer than 5 domains")
-	}
-	if len(p.DomainUrls) > 5 {
-		return fmt.Errorf("DomainUrls cannot be longer than 5 domain URLs")
-	}
-	if len(p.ExcludeDomains) > 5 {
-		return fmt.Errorf("ExcludeDomains cannot be longer than 5 domains")
-	}
-	for _, field := range p.ExcludeFields {
-		if !isValidField(field) {
-			return fmt.Errorf("invalid field in ExcludeFields: %s", field)
-		}
-	}
-	if p.PriorityDomain != "" && !isValidPriorityDomain(p.PriorityDomain) {
-		return fmt.Errorf("%s is not an available priority domain. Possible options are: %v", p.PriorityDomain, strings.Join(allowedPriorityDomain, ","))
-	}
-	if p.Size < 0 || p.Size > 50 {
-		return fmt.Errorf("Size must be between 1 and 50")
-	}
-	if p.From.IsZero() && p.From.After(time.Now()) {
-		return fmt.Errorf("From date must be in the past")
-	}
-	if p.To.IsZero() && p.To.After(time.Now()) {
-		return fmt.Errorf("To date must be in the past")
-	}
-	return nil
-}
 
-// Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
-func (p *HistoricalNewsQuery) Validate() error {
-	if p.QueryInTitle != "" && p.QueryInMetadata != "" {
-		return fmt.Errorf("QueryInTitle and QueryInMetadata cannot be used together")
-	}
-	if len(p.Categories) > 0 && len(p.ExcludeCategories) > 0 {
-		return fmt.Errorf("Categories and ExcludeCategories cannot be used together")
-	}
-	if len(p.Query) > 512 {
-		return fmt.Errorf("Query cannot be longer than 512 characters")
-	}
-	if len(p.QueryInTitle) > 512 {
-		return fmt.Errorf("QueryInTitle cannot be longer than 512 characters")
-	}
-	if len(p.QueryInMetadata) > 512 {
-		return fmt.Errorf("QueryInMetadata cannot be longer than 512 characters")
-	}
-	if len(p.Countries) > 5 {
-		return fmt.Errorf("Countries cannot be longer than 5 countries")
-	}
-	for _, countryCode := range p.Countries {
-		if !isValidCountry(countryCode) {
-			return fmt.Errorf("invalid country code: %s", countryCode)
+		// split comma-separated rules
+		// each rule is of the form "rulename:rulevalue"
+		rules := strings.Split(tag, ",")
+		for _, rule := range rules {
+			if rule == "custom" {
+				// Use custom validators
+				if field.Name == "Timeframe" {
+					if !isValidTimeframe(value.String()) {
+						return fmt.Errorf("invalid timeframe: %s", value.String())
+					}
+					continue
+				}
+				if field.Name == "ExcludeFields" {
+					for i := 0; i < value.Len(); i++ {
+						field := value.Index(i).String()
+						if !isValidField(field) {
+							return fmt.Errorf("invalid field \"%v\" in ExcludeFields", field)
+						}
+						continue
+					}
+				}
+				continue
+			}
+			parts := strings.Split(rule, ":")
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid validation rule: %s", rule)
+			}
+			ruleName := parts[0]
+			ruleValue := parts[1]
+			switch ruleName {
+			case "min":
+				val, err := strconv.ParseInt(ruleValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid %v value: %v", ruleName, ruleValue)
+				}
+				if value.Int() < val {
+					return fmt.Errorf("field %s must be greater than or equal to %v", field.Name, ruleValue)
+				}
+			case "max":
+				val, err := strconv.ParseInt(ruleValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid %v value: %v", ruleName, ruleValue)
+				}
+				if value.Int() > val {
+					return fmt.Errorf("field %v must be less than or equal to %v", field.Name, ruleValue)
+				}
+			case "in":
+				var fieldValues []string
+				switch value.Kind() {
+				case reflect.Slice:
+					fieldValues = make([]string, value.Len())
+					for i := 0; i < value.Len(); i++ {
+						fieldValues[i] = fmt.Sprintf("%v", value.Index(i).Interface())
+					}
+				case reflect.String:
+					fieldValues = []string{value.String()}
+				default:
+					return fmt.Errorf("invalid field  valuse %v in %v: %v", value.Interface(), field.Name, ruleValue)
+				}
+				for _, val := range fieldValues {
+					if !slices.Contains(allowedValues[ruleValue], val) {
+						return fmt.Errorf("invalid value field in %v: %v", field.Name, val)
+					}
+				}
+			case "maxlen":
+				val, err := strconv.Atoi(ruleValue)
+				if err != nil {
+					return fmt.Errorf("invalid %v value: %v", ruleName, ruleValue)
+				}
+				if value.Len() > val {
+					return fmt.Errorf("field %v cannot be longer than %v", field.Name, ruleValue)
+				}
+			case "time":
+				t := value.Interface().(time.Time)
+				switch ruleValue {
+				case "past":
+					if t.After(time.Now()) {
+						return fmt.Errorf("%v must be in the past", field.Name)
+					}
+				case "future":
+					if t.Before(time.Now()) {
+						return fmt.Errorf("%v must be in the future", field.Name)
+					}
+				default:
+					return fmt.Errorf("invalid %v validation rule: %v", ruleName, ruleValue)
+				}
+			case "mutex":
+				if !v.FieldByName(ruleValue).IsZero() {
+					return fmt.Errorf("%v and %v cannot be used together", field.Name, ruleValue)
+				}
+			}
 		}
-	}
-	if len(p.Categories) > 5 {
-		return fmt.Errorf("Categories cannot be longer than 5 categories")
-	}
-	for _, category := range p.Categories {
-		if !isValidCategory(category) {
-			return fmt.Errorf("invalid category in Categories: %s", category)
-		}
-	}
-	if len(p.ExcludeCategories) > 5 {
-		return fmt.Errorf("ExcludeCategories cannot be longer than 5 categories")
-	}
-	for _, category := range p.ExcludeCategories {
-		if !isValidCategory(category) {
-			return fmt.Errorf("invalid category in ExcludeCategories: %s", category)
-		}
-	}
-	if len(p.Languages) > 5 {
-		return fmt.Errorf("Languages cannot be longer than 5 languages")
-	}
-	for _, languageCode := range p.Languages {
-		if !isValidLanguage(languageCode) {
-			return fmt.Errorf("invalid language code: %s", languageCode)
-		}
-	}
-	if len(p.Domains) > 5 {
-		return fmt.Errorf("Domains cannot be longer than 5 domains")
-	}
-	if len(p.DomainUrls) > 5 {
-		return fmt.Errorf("DomainUrls cannot be longer than 5 domain URLs")
-	}
-	if len(p.ExcludeDomains) > 5 {
-		return fmt.Errorf("ExcludeDomains cannot be longer than 5 domains")
-	}
-	for _, field := range p.ExcludeFields {
-		if !isValidField(field) {
-			return fmt.Errorf("invalid field in ExcludeFields: %s", field)
-		}
-	}
-	if p.PriorityDomain != "" && !isValidPriorityDomain(p.PriorityDomain) {
-		return fmt.Errorf("%s is not an available priority domain. Possible options are: %v", p.PriorityDomain, strings.Join(allowedPriorityDomain, ","))
-	}
-	if p.Size < 0 || p.Size > 50 {
-		return fmt.Errorf("Size must be between 1 and 50")
-	}
-	if p.From.IsZero() && p.From.After(time.Now()) {
-		return fmt.Errorf("From date must be in the past")
-	}
-	if p.To.IsZero() && p.To.After(time.Now()) {
-		return fmt.Errorf("To date must be in the past")
-	}
-	return nil
-}
-
-// Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
-func (p *SourcesQuery) Validate() error {
-	if p.Country != "" && !isValidCountry(p.Country) {
-		return fmt.Errorf("invalid country code: %s", p.Country)
-	}
-	if p.Language != "" && !isValidLanguage(p.Language) {
-		return fmt.Errorf("invalid language code: %s", p.Language)
-	}
-	if p.Category != "" && !isValidCategory(p.Category) {
-		return fmt.Errorf("invalid category: %s", p.Category)
-	}
-	if p.PriorityDomain != "" && !isValidPriorityDomain(p.PriorityDomain) {
-		return fmt.Errorf("%s is not an available priority domain. Possible options are: %v", p.PriorityDomain, strings.Join(allowedPriorityDomain, ","))
 	}
 	return nil
 }
 
 // structToMap converts a struct into a map of query parameters, handling slices.
-func structToMap(params interface{}) (map[string]string, error) {
+func structToMap(s interface{}) (map[string]string, error) {
 
 	result := make(map[string]string)
 	// dereference pointer with Elem() if needed
-	v := reflect.ValueOf(params)
+	v := reflect.ValueOf(s)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}

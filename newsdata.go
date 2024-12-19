@@ -39,94 +39,129 @@ type Tag struct {
 
 // BreakingNewsQuery represents the query parameters for the breaking news endpoint. See https://newsdata.io/documentation/#latest-news
 type BreakingNewsQuery struct {
-	Id                []string `query:"id"`              // List of article IDs
-	Query             string   `query:"q"`               // Main search term
-	QueryInTitle      string   `query:"qInTitle"`        // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
-	Timeframe         string   `query:"timeframe"`       // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
-	Categories        []string `query:"category"`        // List of categories (e.g., ["technology", "sports"])
-	ExcludeCategories []string `query:"excludecategory"` // List of categories to exclude
-	Countries         []string `query:"country"`         // List of country codes (e.g., ["us", "uk"])
-	Languages         []string `query:"language"`        // List of language codes (e.g., ["en", "es"])
-	Tags              []string `query:"tag"`             // List of AI tags
-	Sentiment         string   `query:"sentiment"`       // Filter by sentiment ("positive", "negative", "neutral")
-	Regions           []string `query:"region"`          // List of regions
-	Domains           []string `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
-	DomainUrls        []string `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
-	ExcludeDomains    []string `query:"excludedomain"`   // List of domains to exclude
-	ExcludeFields     []string `query:"excludefield"`    // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
-	Timezone          string   `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  bool     `query:"removeduplicate"` // If set to true, duplicate articles will be removed from the results
-	Size              int      `query:"size"`            // Number of results per page
-	Page              string   `query:"page"`            // Page ref
+	Id                []string `query:"id"`                                                   // List of article IDs
+	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Timeframe         string   `query:"timeframe"`                                            // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
+	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
+	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
+	Countries         []string `query:"country" validate:"maxlen:5,in:countries"`             // List of country codes (e.g., ["us", "uk"])
+	Languages         []string `query:"language" validate:"maxlen:5,in:languages"`            // List of language codes (e.g., ["en", "es"])
+	Tags              []string `query:"tag" validate:"maxlen:5,in:tags"`                      // List of AI tags
+	Sentiment         string   `query:"sentiment" validate:"in:sentiments"`                   // Filter by sentiment ("positive", "negative", "neutral")
+	Regions           []string `query:"region" validate:"maxlen:5"`                           // List of regions
+	Domains           []string `query:"domain" validate:"maxlen:5"`                           // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
+	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	RemoveDuplicates  bool     `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
+	Page              string   `query:"page"`                                                 // Page ref
+}
+
+// setPage sets the page parameter
+func (q *BreakingNewsQuery) setPage(page string) {
+	q.Page = page
+}
+
+// Validate validates the BreakingNewsQuery struct, ensuring all fields are valid.
+func (query *BreakingNewsQuery) Validate() error {
+	return validate(query)
 }
 
 // HistoricalNewsQuery represents the query parameters for the historical news endpoint. See https://newsdata.io/documentation/#news-archive
 type HistoricalNewsQuery struct {
-	Id                []string `query:"id"`              // List of article IDs
-	Query             string   `query:"q"`               // Main search term
-	QueryInTitle      string   `query:"qInTitle"`        // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
-	Categories        []string `query:"category"`        // List of categories (e.g., ["technology", "sports"])
-	ExcludeCategories []string `query:"excludecategory"` // List of categories to exclude
-	Countries         []string `query:"country"`         // List of country codes (e.g., ["us", "uk"])
-	Languages         []string `query:"language"`        // List of language codes (e.g., ["en", "es"])
-	Domains           []string `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
-	DomainUrls        []string `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
-	ExcludeDomains    []string `query:"excludedomain"`   // List of domains to exclude
-	ExcludeFields     []string `query:"excludefield"`    // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
-	From              DateTime `query:"from_date"`       // From date
-	To                DateTime `query:"to_date"`         // To date
-	Timezone          string   `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	Size              int      `query:"size"`            // Number of results per page
-	Page              string   `query:"page"`            // Page ref
+	Id                []string `query:"id"`                                                   // List of article IDs
+	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
+	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
+	Countries         []string `query:"country" validate:"maxlen:5,in:countries"`             // List of country codes (e.g., ["us", "uk"])
+	Languages         []string `query:"language" validate:"maxlen:5,in:languages"`            // List of language codes (e.g., ["en", "es"])
+	Domains           []string `query:"domain" validate:"maxlen:5"`                           // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
+	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	From              DateTime `query:"from_date" validate:"time:past"`                       // From date
+	To                DateTime `query:"to_date" validate:"time:past"`                         // To date
+	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
+	Page              string   `query:"page"`                                                 // Page ref
+}
+
+// setPage sets the page parameter
+func (q *HistoricalNewsQuery) setPage(page string) {
+	q.Page = page
+}
+
+// Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
+func (query *HistoricalNewsQuery) Validate() error {
+	return validate(query)
 }
 
 // CryptoNewsQuery represents the query parameters for the crypto news endpoint. See https://newsdata.io/documentation/#crypto-news
 type CryptoNewsQuery struct {
-	Id                []string `query:"id"`              // List of article IDs
-	Coins             []string `query:"coin"`            // List of coins
-	Query             string   `query:"q"`               // Main search term
-	QueryInTitle      string   `query:"qInTitle"`        // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta"`         // Search term in article metadata (titles, URL, meta keywords and meta description)
-	Timeframe         string   `query:"timeframe"`       // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
-	Categories        []string `query:"category"`        // List of categories (e.g., ["technology", "sports"])
-	ExcludeCategories []string `query:"excludecategory"` // List of categories to exclude
-	Countries         []string `query:"country"`         // List of country codes (e.g., ["us", "uk"])
-	Languages         []string `query:"language"`        // List of language codes (e.g., ["en", "es"])
-	Domains           []string `query:"domain"`          // List of domains (e.g., ["nytimes", "bbc"])
-	DomainUrls        []string `query:"domainurl"`       // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
-	ExcludeDomains    []string `query:"excludedomain"`   // List of domains to exclude
-	ExcludeFields     []string `query:"excludefield"`    // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain"`  // Search the news articles only from top news domains. Possible values : Top, Medium, Low
-	Timezone          string   `query:"timezone"`        // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content"`    // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image"`           // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video"`           // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  bool     `query:"removeduplicate"` // If set to true, duplicate articles will be removed from the results
-	Sentiment         string   `query:"sentiment"`       // Filter by sentiment ("positive", "negative", "neutral")
-	Tags              []string `query:"tag"`             // Filter by crypto-specific tags
-	From              DateTime `query:"from_date"`       // From date
-	To                DateTime `query:"to"`              // To date
-	Size              int      `query:"size"`            // Number of results per page
-	Page              string   `query:"page"`            // Page ref
+	Id                []string `query:"id"`                                                   // List of article IDs
+	Coins             []string `query:"coin"`                                                 // List of coins
+	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	Timeframe         string   `query:"timeframe"`                                            // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
+	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
+	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
+	Countries         []string `query:"country" validate:"maxlen:5,in:countries"`             // List of country codes (e.g., ["us", "uk"])
+	Languages         []string `query:"language" validate:"maxlen:5,in:languages"`            // List of language codes (e.g., ["en", "es"])
+	Domains           []string `query:"domain" validate:"maxlen:5"`                           // List of domains (e.g., ["nytimes", "bbc"])
+	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
+	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
+	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	RemoveDuplicates  bool     `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	Sentiment         string   `query:"sentiment" validate:"in:sentiments"`                   // Filter by sentiment ("positive", "negative", "neutral")
+	Tags              []string `query:"tag" validate:"in:tags"`                               // Filter by crypto-specific tags
+	From              DateTime `query:"from_date" validate:"time:past"`                       // From date
+	To                DateTime `query:"to_date" validate:"time:past"`                         // To date
+	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
+	Page              string   `query:"page"`                                                 // Page ref
+}
+
+// setPage sets the page parameter
+func (q *CryptoNewsQuery) setPage(page string) {
+	q.Page = page
+}
+
+// Validate validates the CryptoNewsQuery struct, ensuring all fields are valid.
+func (query *CryptoNewsQuery) Validate() error {
+	return validate(query)
 }
 
 // SourcesQuery represents the query parameters for the sources endpoint. See https://newsdata.io/documentation/#news-sources
 type SourcesQuery struct {
-	Country        string `query:"country"`        // Filter by country code
-	Language       string `query:"language"`       // Filter by language code
-	Category       string `query:"category"`       // Filter by category (e.g., "technology")
-	PriorityDomain string `query:"prioritydomain"` // Filter by priority domain (possible values: "top", "medium", "low")
-	domainurl      string `query:"domainurl"`      // Filter by domain URL (e.g., "nytimes.com")
+	Country        string `query:"country" validate:"maxlen:5,in:countries"`     // Filter by country code
+	Language       string `query:"language" validate:"maxlen:5,in:languages"`    // Filter by language code
+	Category       string `query:"category" validate:"maxlen:5,in:categories"`   // Filter by category (e.g., "technology")
+	PriorityDomain string `query:"prioritydomain" validate:"in:priorityDomains"` // Filter by priority domain (possible values: "top", "medium", "low")
+	domainurl      string `query:"domainurl" validate:"maxlen:5"`                // Filter by domain URL (e.g., "nytimes.com")
+}
+
+// Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
+func (query *SourcesQuery) Validate() error {
+	return validate(query)
 }
 
 // newsResponse represents the news API response. See https://newsdata.io/documentation/#http_response
