@@ -67,7 +67,7 @@ params := BreakingNewsQuery{
     Query: "bitcoin",
     Languages: []string{"en"},
     Size: 50,
-    RemoveDuplicates: true,
+    RemoveDuplicates: "1",
 }
 response, err := client.LatestNews.Get(&params)
 ```
@@ -149,7 +149,7 @@ The `newsResponse` struct represents the API response:
 | Domains           | []string | Include specific domains (max 5)                      |
 | ExcludeDomains    | []string | Exclude specific domains (max 5)                      |
 | PriorityDomain    | string   | Filter by domain priority ("Top", "Medium", "Low")    |
-| RemoveDuplicates  | bool     | Remove duplicate articles                             |
+| RemoveDuplicates  | string   | Remove duplicate articles ("1" for true)              |
 | Size              | int      | Results per page (max 50)                             |
 
 → For details, see the [Latest News API documentation](https://newsdata.io/documentation/#latest-news)
@@ -179,7 +179,7 @@ The `newsResponse` struct represents the API response:
 | Languages        | []string | Filter by language codes (max 5)                        |
 | Tags             | []string | Filter by crypto-specific tags                          |
 | Sentiment        | string   | Filter by sentiment ("positive", "negative", "neutral") |
-| RemoveDuplicates | bool     | Remove duplicate articles                               |
+| RemoveDuplicates | string   | Remove duplicate articles ("1" for true)              |
 | Size             | int      | Results per page (max 50)                               |
 
 → For details, see the [Crypto News API documentation](https://newsdata.io/documentation/#crypto-news)
