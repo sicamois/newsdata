@@ -30,8 +30,7 @@ func APIKey(t *testing.T) string {
 }
 
 func TestGetBreakingNews(t *testing.T) {
-	client := NewClient(APIKey(t), 1)
-	client.EnableDebug()
+	client := NewClient(APIKey(t))
 	query := BreakingNewsQuery{
 		Query:     "artificial intelligence",
 		Languages: []string{"en"},
@@ -41,7 +40,7 @@ func TestGetBreakingNews(t *testing.T) {
 		ExcludeFields:    []string{"Title"},
 		RemoveDuplicates: "1",
 	}
-	Articles, err := client.GetBreakingNews(query)
+	Articles, err := client.GetBreakingNews(query, 1)
 	if err != nil {
 		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestGetBreakingNews(t *testing.T) {
 }
 
 func TestGetSources(t *testing.T) {
-	client := NewClient(APIKey(t), 0)
+	client := NewClient(APIKey(t))
 	options := SourcesQuery{
 		Country: "us",
 	}

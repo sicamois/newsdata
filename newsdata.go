@@ -3,7 +3,6 @@ package newsdata
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,15 +10,6 @@ import (
 	"os"
 	"time"
 )
-
-// NewsdataClient handles the HTTP client configuration.
-type NewsdataClient struct {
-	APIKey     string
-	BaseURL    string
-	HTTPClient *http.Client
-	Logger     *slog.Logger
-	MaxResults int
-}
 
 // pageSetter is an interface for setting the page parameter.
 type pageSetter interface {
@@ -238,27 +228,34 @@ type Source struct {
 	LastFetch   DateTime `json:"last_fetch"`
 }
 
+// NewsdataClient is the base client to access NewsData API.
+// It provides methods to fetch news data.
+// It handles the HTTP client and the Logger configurations.
+type NewsdataClient struct {
+	apiKey     string
+	baseURL    string
+	HTTPClient *http.Client
+	Logger     *slog.Logger
+}
+
 // newClient creates a new  NewsdataClient with default settings.
-// nbArticlesMax is the maximum number of Articles to fetch.
-// If set to 0, no limit is applied.
 // Timeout is set to 5 seconds by default.
-func NewClient(apiKey string, nbArticlesMax int) *NewsdataClient {
+func NewClient(apiKey string) *NewsdataClient {
 	logger := NewCustomLogger(os.Stdout, slog.LevelInfo)
 	return &NewsdataClient{
-		APIKey:  apiKey,
-		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
+		apiKey:  apiKey,
+		baseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		Logger:     logger,
-		MaxResults: nbArticlesMax,
+		Logger: logger,
 	}
 }
 
 // fetch sends an HTTP request and decodes the response.
 func (c *NewsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	// Construct the full URL with query parameters.
-	reqURL, err := url.Parse(c.BaseURL + endpoint)
+	reqURL, err := url.Parse(c.baseURL + endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +277,7 @@ func (c *NewsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-ACCESS-KEY", c.APIKey)
+	req.Header.Set("X-ACCESS-KEY", c.apiKey)
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -366,27 +363,33 @@ func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 
 // Get the latest news Articles in real-time from various sources worldwide.
 // Filter by categories, countries, languages and more.
-func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery) (*[]Article, error) {
+// maxResults is the maximum number of Articles to fetch.
+// If set to 0, no limit is applied.
+func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/latest", &query, c.MaxResults)
+	return c.fetchArticles("/latest", &query, maxResults)
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
-func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery) (*[]Article, error) {
+// maxResults is the maximum number of Articles to fetch.
+// If set to 0, no limit is applied.
+func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/crypto", &query, c.MaxResults)
+	return c.fetchArticles("/crypto", &query, maxResults)
 }
 
 // Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
-func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery) (*[]Article, error) {
+// maxResults is the maximum number of Articles to fetch.
+// If set to 0, no limit is applied.
+func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/archive", &query, c.MaxResults)
+	return c.fetchArticles("/archive", &query, maxResults)
 }
 
 // fetchSources fetches news sources from the API.
@@ -446,13 +449,4 @@ func (c *NewsdataClient) EnableDebug() {
 func (c *NewsdataClient) DisableDebug() {
 	w := c.Logger.Handler().(*LevelHandler).writer
 	c.Logger = NewCustomLogger(w, slog.LevelInfo)
-}
-
-// setNbArticlesMax limits the number of results returned by the client.
-func (c *NewsdataClient) setNbArticlesMax(n int) error {
-	if n < 0 {
-		return fmt.Errorf("Nb Articles max must be positive")
-	}
-	c.MaxResults = n
-	return nil
 }

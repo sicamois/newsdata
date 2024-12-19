@@ -26,11 +26,11 @@ You need a [newsdata.io](https://newsdata.io) API key to use this library.
 
 ## Usage
 
-### Basic Usage
+### Basic Usages
 
 ```go
 // Create a new client
-client := newsdata.NewClient("your-api-key", 0) // 0 means no limit on results
+client := newsdata.NewClient("your-api-key")
 
 // Get breaking news about climate change
 query := BreakingNewsQuery{
@@ -39,25 +39,14 @@ query := BreakingNewsQuery{
     Categories: []string{"environment", "science"},
     Countries: []string{"us", "gb", "fr"},
 }
-Articles, err := client.GetBreakingNews(query)
 
-// Get news sources
+// Get the first 100 breaking news about climate change
+Articles, err := client.GetBreakingNews(query, 100)
+
+// Get US news sources
 Sources, err := client.GetSources(SourcesQuery{
     Country: "us",
 })
-```
-
-3. **Direct API Access** - For complete control over API parameters
-   - Returns: `newsResponse` (see newsResponse Structure below)
-
-```go
-params := BreakingNewsQuery{
-    Query: "bitcoin",
-    Languages: []string{"en"},
-    Size: 50,
-    RemoveDuplicates: "1",
-}
-response, err := client.LatestNews.Get(&params)
 ```
 
 ## Advanced Client Configuration
@@ -67,12 +56,6 @@ response, err := client.LatestNews.Get(&params)
 ```go
 client := newsdata.NewClient("your-api-key", 0)
 client.SetTimeout(20 * time.Second)
-```
-
-### Limiting Results
-
-```go
-client := newsdata.NewClient("your-api-key", 100)
 ```
 
 ### Debug Logging
@@ -122,20 +105,20 @@ The client logger can be:
 
 ```go
 func main() {
-    client := newsdata.NewClient("your-api-key", 0)
+    client := newsdata.NewClient("your-api-key")
 
     // Configure client
     client.SetTimeout(15 * time.Second)
-    client.LimitResultsToFirst(50)
 
     // Perform an advanced search
-    options := NewsQueryOptions{
+    query := BreakingNewsQuery{
+        Query:     "artificial intelligence",
         Languages:  []string{"en"},
         Categories: []string{"technology"},
         Timeframe:  "24",
     }
 
-    Articles, err := client.LatestNews.AdvancedSearch("artificial intelligence", options)
+    Articles, err := client.GetBreakingNews(query, 100)
     if err != nil {
         log.Fatal(err)
     }
