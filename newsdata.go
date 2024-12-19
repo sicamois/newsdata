@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-// newsdataClient handles the HTTP client configuration.
-type newsdataClient struct {
+// NewsdataClient handles the HTTP client configuration.
+type NewsdataClient struct {
 	APIKey     string
 	BaseURL    string
 	HTTPClient *http.Client
 	Logger     *slog.Logger
-	maxResults int
+	MaxResults int
 }
 
 // pageSetter is an interface for setting the page parameter.
@@ -39,10 +39,10 @@ type Tag struct {
 
 // BreakingNewsQuery represents the query parameters for the breaking news endpoint. See https://newsdata.io/documentation/#latest-news
 type BreakingNewsQuery struct {
-	Id                []string `query:"id"`                                                   // List of article IDs
+	Id                []string `query:"id"`                                                   // List of Article IDs
 	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
-	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in Article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in Article metadata (titles, URL, meta keywords and meta description)
 	Timeframe         string   `query:"timeframe"`                                            // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
 	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
 	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
@@ -55,12 +55,12 @@ type BreakingNewsQuery struct {
 	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
 	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
 	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
-	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news Articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`                                             // Search the news Articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the Articles with full_content response object will be returned, if set to 0, only the Articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the Articles with featured image will be returned, if set to 0, only the Articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the Articles with video will be returned, if set to 0, only the Articles without video will be returned
+	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate Articles will be removed from the results
 	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
 	Page              string   `query:"page"`                                                 // Page ref
 }
@@ -77,10 +77,10 @@ func (query *BreakingNewsQuery) Validate() error {
 
 // HistoricalNewsQuery represents the query parameters for the historical news endpoint. See https://newsdata.io/documentation/#news-archive
 type HistoricalNewsQuery struct {
-	Id                []string `query:"id"`                                                   // List of article IDs
+	Id                []string `query:"id"`                                                   // List of Article IDs
 	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
-	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in Article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in Article metadata (titles, URL, meta keywords and meta description)
 	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
 	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
 	Countries         []string `query:"country" validate:"maxlen:5,in:countries"`             // List of country codes (e.g., ["us", "uk"])
@@ -89,13 +89,13 @@ type HistoricalNewsQuery struct {
 	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
 	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
 	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news Articles only from top news domains. Possible values : Top, Medium, Low
 	From              DateTime `query:"from_date" validate:"time:past"`                       // From date
 	To                DateTime `query:"to_date" validate:"time:past"`                         // To date
-	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
+	Timezone          string   `query:"timezone"`                                             // Search the news Articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the Articles with full_content response object will be returned, if set to 0, only the Articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the Articles with featured image will be returned, if set to 0, only the Articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the Articles with video will be returned, if set to 0, only the Articles without video will be returned
 	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
 	Page              string   `query:"page"`                                                 // Page ref
 }
@@ -112,11 +112,11 @@ func (query *HistoricalNewsQuery) Validate() error {
 
 // CryptoNewsQuery represents the query parameters for the crypto news endpoint. See https://newsdata.io/documentation/#crypto-news
 type CryptoNewsQuery struct {
-	Id                []string `query:"id"`                                                   // List of article IDs
+	Id                []string `query:"id"`                                                   // List of Article IDs
 	Coins             []string `query:"coin"`                                                 // List of coins
 	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
-	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in article title
-	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in article metadata (titles, URL, meta keywords and meta description)
+	QueryInTitle      string   `query:"qInTitle" validate:"maxlen:512,mutex:QueryInMetadata"` // Search term in Article title
+	QueryInMetadata   string   `query:"qInMeta" validate:"maxlen:512,mutex:QueryInTitle"`     // Search term in Article metadata (titles, URL, meta keywords and meta description)
 	Timeframe         string   `query:"timeframe"`                                            // Timeframe to filter by hours are represented by a integer value, minutes are represented by an integer value with a suffix of m
 	Categories        []string `query:"category" validate:"maxlen:5,in:categories"`           // List of categories (e.g., ["technology", "sports"])
 	ExcludeCategories []string `query:"excludecategory" validate:"maxlen:5,in:categories"`    // List of categories to exclude
@@ -126,12 +126,12 @@ type CryptoNewsQuery struct {
 	DomainUrls        []string `query:"domainurl" validate:"maxlen:5"`                        // List of domain URLs (e.g., ["nytimes.com", "bbc.com", "bbc.co.uk"])
 	ExcludeDomains    []string `query:"excludedomain" validate:"maxlen:5"`                    // List of domains to exclude
 	ExcludeFields     []string `query:"excludefield" validate:"custom"`                       // List of fields to exclude
-	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news articles only from top news domains. Possible values : Top, Medium, Low
-	Timezone          string   `query:"timezone"`                                             // Search the news articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
-	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
-	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	PriorityDomain    string   `query:"prioritydomain" validate:"in:priorityDomains"`         // Search the news Articles only from top news domains. Possible values : Top, Medium, Low
+	Timezone          string   `query:"timezone"`                                             // Search the news Articles for a specific timezone. Example values : "America/New_york", "Asia/Kolkata" → see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the Articles with full_content response object will be returned, if set to 0, only the Articles without full_content response object will be returned
+	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the Articles with featured image will be returned, if set to 0, only the Articles without featured image will be returned
+	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the Articles with video will be returned, if set to 0, only the Articles without video will be returned
+	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate Articles will be removed from the results
 	Sentiment         string   `query:"sentiment" validate:"in:sentiments"`                   // Filter by sentiment ("positive", "negative", "neutral")
 	Tags              []string `query:"tag" validate:"in:tags"`                               // Filter by crypto-specific tags
 	From              DateTime `query:"from_date" validate:"time:past"`                       // From date
@@ -167,8 +167,8 @@ func (query *SourcesQuery) Validate() error {
 // newsResponse represents the news API response. See https://newsdata.io/documentation/#http_response
 type newsResponse struct {
 	Status       string    `json:"status"`       // Response status ("success" or error message)
-	TotalResults int       `json:"totalResults"` // Total number of articles matching the query
-	Articles     []article `json:"results"`      // Array of articles
+	TotalResults int       `json:"totalResults"` // Total number of Articles matching the query
+	Articles     []Article `json:"results"`      // Array of Articles
 	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
@@ -176,7 +176,7 @@ type newsResponse struct {
 type sourcesResponse struct {
 	Status       string   `json:"status"`       // Response status ("success" or error message)
 	TotalResults int      `json:"totalResults"` // Total number of news sources matching the query
-	Sources      []source `json:"results"`      // Array of news sources
+	Sources      []Source `json:"results"`      // Array of news sources
 }
 
 // errorResponse represents the API response when an error happened.
@@ -188,16 +188,16 @@ type errorResponse struct {
 	} `json:"results"`
 }
 
-// SentimentStats represents the sentiment stats for a news article.
+// SentimentStats represents the sentiment stats for a news Article.
 type SentimentStats struct {
 	Positive float64 `json:"positive"`
 	Neutral  float64 `json:"neutral"`
 	Negative float64 `json:"negative"`
 }
 
-// article represents a news article. See https://newsdata.io/documentation/#http_response
-type article struct {
-	Id             string         `json:"article_id"`
+// Article represents a news Article. See https://newsdata.io/documentation/#http_response
+type Article struct {
+	Id             string         `json:"Article_id"`
 	Title          string         `json:"title"`
 	Link           string         `json:"link"`
 	Keywords       []string       `json:"keywords"`
@@ -224,8 +224,8 @@ type article struct {
 	Duplicate      bool           `json:"duplicate"`
 }
 
-// source represents a news source. See https://newsdata.io/documentation/#news-sources
-type source struct {
+// Source represents a news source. See https://newsdata.io/documentation/#news-sources
+type Source struct {
 	Id          string   `json:"id"`
 	Name        string   `json:"name"`
 	Url         string   `json:"url"`
@@ -238,25 +238,25 @@ type source struct {
 	LastFetch   DateTime `json:"last_fetch"`
 }
 
-// newClient creates a new newsdataClient with default settings.
-// nbArticlesMax is the maximum number of articles to fetch.
+// newClient creates a new  NewsdataClient with default settings.
+// nbArticlesMax is the maximum number of Articles to fetch.
 // If set to 0, no limit is applied.
 // Timeout is set to 5 seconds by default.
-func NewClient(apiKey string, nbArticlesMax int) *newsdataClient {
+func NewClient(apiKey string, nbArticlesMax int) *NewsdataClient {
 	logger := NewCustomLogger(os.Stdout, slog.LevelInfo)
-	return &newsdataClient{
+	return &NewsdataClient{
 		APIKey:  apiKey,
 		BaseURL: "https://newsdata.io/api/1", // Base URL from the documentation
 		HTTPClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
 		Logger:     logger,
-		maxResults: nbArticlesMax,
+		MaxResults: nbArticlesMax,
 	}
 }
 
 // fetch sends an HTTP request and decodes the response.
-func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
+func (c *NewsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.BaseURL + endpoint)
 	if err != nil {
@@ -300,7 +300,7 @@ func (c *newsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	return body, nil
 }
 
-func (c *newsdataClient) fetchNews(endpoint string, query interface{}) (*newsResponse, error) {
+func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsResponse, error) {
 	body, err := c.fetch(endpoint, query)
 	if err != nil {
 		return nil, err
@@ -313,14 +313,14 @@ func (c *newsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-// fetchArticles fetches news articles from the API.
-func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]article, error) {
-	articles := &[]article{}
+// fetchArticles fetches news Articles from the API.
+func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]Article, error) {
+	Articles := &[]Article{}
 
 	page := ""
 
 	// Keep fetching pages until maxResults is reached or no more results.
-	for len(*articles) < maxResults || maxResults == 0 {
+	for len(*Articles) < maxResults || maxResults == 0 {
 		query.setPage(page) // Set the page parameter
 
 		body, err := c.fetch(endpoint, query)
@@ -333,23 +333,23 @@ func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 			return nil, err
 		}
 
-		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#articles", len(res.Articles), "nextPage", res.NextPage)
+		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#Articles", len(res.Articles), "nextPage", res.NextPage)
 
 		if maxResults == 0 || res.TotalResults < maxResults {
 			maxResults = res.TotalResults
 		}
 
 		// Append results to the aggregate slice.
-		*articles = append(*articles, res.Articles...)
-		c.Logger.Debug("Articles retrieved", "#", len(*articles))
+		*Articles = append(*Articles, res.Articles...)
+		c.Logger.Debug("Articles retrieved", "#", len(*Articles))
 
 		// Update page
-		if res.NextPage == "" || len(*articles) >= maxResults {
+		if res.NextPage == "" || len(*Articles) >= maxResults {
 			if res.NextPage == "" {
 				c.Logger.Debug("All results fetched")
 			}
-			if len(*articles) >= maxResults {
-				c.Logger.Debug("Max results reached", "maxResults", maxResults, "total #articles", len(*articles))
+			if len(*Articles) >= maxResults {
+				c.Logger.Debug("Max results reached", "maxResults", maxResults, "total #Articles", len(*Articles))
 			}
 			break
 		}
@@ -357,40 +357,41 @@ func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 	}
 
 	// Trim results to maxResults if necessary.
-	if len(*articles) > maxResults {
-		*articles = (*articles)[:maxResults]
+	if len(*Articles) > maxResults {
+		*Articles = (*Articles)[:maxResults]
 	}
 
-	return articles, nil
+	return Articles, nil
 }
 
-// GetBreakingNews fetches breaking news based on query parameters.
-func (c *newsdataClient) GetBreakingNews(query BreakingNewsQuery) (*[]article, error) {
+// Get the latest news Articles in real-time from various sources worldwide.
+// Filter by categories, countries, languages and more.
+func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/latest", &query, c.maxResults)
+	return c.fetchArticles("/latest", &query, c.MaxResults)
 }
 
-// GetCryptoNews fetches crypto news based on query parameters.
-func (c *newsdataClient) GetCryptoNews(query CryptoNewsQuery) (*[]article, error) {
+// Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
+func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/crypto", &query, c.maxResults)
+	return c.fetchArticles("/crypto", &query, c.MaxResults)
 }
 
-// GetHistoricalNews fetches historical news based on query parameters.
-func (c *newsdataClient) GetHistoricalNews(query HistoricalNewsQuery) (*[]article, error) {
+// Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
+func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-	return c.fetchArticles("/archive", &query, c.maxResults)
+	return c.fetchArticles("/archive", &query, c.MaxResults)
 }
 
 // fetchSources fetches news sources from the API.
-func (c *newsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]source, error) {
-	sources := &[]source{}
+func (c *NewsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]Source, error) {
+	sources := &[]Source{}
 
 	body, err := c.fetch(endpoint, query)
 	if err != nil {
@@ -411,8 +412,8 @@ func (c *newsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]
 	return sources, nil
 }
 
-// GetSources fetches news sources based on query parameters.
-func (c *newsdataClient) GetSources(query SourcesQuery) (*[]source, error) {
+// Get information about available news sources with filters for country, category, language and priority level.
+func (c *NewsdataClient) GetSources(query SourcesQuery) (*[]Source, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
@@ -420,38 +421,38 @@ func (c *newsdataClient) GetSources(query SourcesQuery) (*[]source, error) {
 }
 
 // SetTimeout sets the HTTP client timeout.
-func (c *newsdataClient) SetTimeout(timeout time.Duration) {
+func (c *NewsdataClient) SetTimeout(timeout time.Duration) {
 	c.HTTPClient.Timeout = timeout
 }
 
 // GetLogger returns the client logger
-func (c *newsdataClient) GetLogger() *slog.Logger {
+func (c *NewsdataClient) GetLogger() *slog.Logger {
 	return c.Logger
 }
 
 // CustomizeLogging customizes the logger used by the client.
-func (c *newsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
+func (c *NewsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
 	customLogger := NewCustomLogger(w, level)
 	c.Logger = customLogger
 }
 
 // EnableDebug enables debug logging.
-func (c *newsdataClient) EnableDebug() {
+func (c *NewsdataClient) EnableDebug() {
 	w := c.Logger.Handler().(*LevelHandler).writer
 	c.Logger = NewCustomLogger(w, slog.LevelDebug)
 }
 
 // DisableDebug disables debug logging.
-func (c *newsdataClient) DisableDebug() {
+func (c *NewsdataClient) DisableDebug() {
 	w := c.Logger.Handler().(*LevelHandler).writer
 	c.Logger = NewCustomLogger(w, slog.LevelInfo)
 }
 
 // setNbArticlesMax limits the number of results returned by the client.
-func (c *newsdataClient) setNbArticlesMax(n int) error {
+func (c *NewsdataClient) setNbArticlesMax(n int) error {
 	if n < 0 {
-		return fmt.Errorf("Nb articles max must be positive")
+		return fmt.Errorf("Nb Articles max must be positive")
 	}
-	c.maxResults = n
+	c.MaxResults = n
 	return nil
 }

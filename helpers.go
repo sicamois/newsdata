@@ -89,14 +89,14 @@ func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// isValidField checks if a field exists in the article struct.
+// isValidField checks if a field exists in the Article struct.
 func isValidField(field string) bool {
-	articleFields := make([]string, 0)
-	t := reflect.TypeOf(article{})
+	ArticleFields := make([]string, 0)
+	t := reflect.TypeOf(Article{})
 	for i := 0; i < t.NumField(); i++ {
-		articleFields = append(articleFields, t.Field(i).Name)
+		ArticleFields = append(ArticleFields, t.Field(i).Name)
 	}
-	for _, allowed := range articleFields {
+	for _, allowed := range ArticleFields {
 		if field == allowed {
 			return true
 		}

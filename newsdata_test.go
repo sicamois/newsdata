@@ -31,6 +31,7 @@ func APIKey(t *testing.T) string {
 
 func TestGetBreakingNews(t *testing.T) {
 	client := NewClient(APIKey(t), 1)
+	client.EnableDebug()
 	query := BreakingNewsQuery{
 		Query:     "artificial intelligence",
 		Languages: []string{"en"},
@@ -40,15 +41,15 @@ func TestGetBreakingNews(t *testing.T) {
 		ExcludeFields:    []string{"Title"},
 		RemoveDuplicates: "1",
 	}
-	articles, err := client.GetBreakingNews(query)
+	Articles, err := client.GetBreakingNews(query)
 	if err != nil {
 		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
-	if len(*articles) == 0 || len(*articles) > 1 {
-		t.Fatalf("Invalid number of articles: %d - should 1", len(*articles))
+	if len(*Articles) == 0 || len(*Articles) > 1 {
+		t.Fatalf("Invalid number of Articles: %d - should 1", len(*Articles))
 	}
-	for _, article := range *articles {
-		if article.Title != "" {
+	for _, Article := range *Articles {
+		if Article.Title != "" {
 			t.Fatalf("Article title field is not exluded")
 		}
 	}

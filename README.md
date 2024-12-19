@@ -12,24 +12,6 @@ A Go client library for accessing the [newsdata.io](https://newsdata.io) API.
 - Input validation
 - Full access to raw API parameters
 
-## Available Methods
-
-### GetBreakingNews
-
-Get the latest news articles in real-time from various sources worldwide. Filter by categories, countries, languages and more.
-
-### GetCryptoNews
-
-Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
-
-### GetHistoricalNews
-
-Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
-
-### GetSources
-
-Get information about available news sources with filters for country, category, language and priority level.
-
 ## Installation
 
 ```go
@@ -57,7 +39,12 @@ query := BreakingNewsQuery{
     Categories: []string{"environment", "science"},
     Countries: []string{"us", "gb", "fr"},
 }
-articles, err := client.GetBreakingNews(query)
+Articles, err := client.GetBreakingNews(query)
+
+// Get news sources
+Sources, err := client.GetSources(SourcesQuery{
+    Country: "us",
+})
 ```
 
 3. **Direct API Access** - For complete control over API parameters
@@ -116,13 +103,13 @@ logger := client.Logger()
 logger.Info("Starting news search...")
 
 // The logger will also be used internally by the client
-articles, err := client.GetBreakingNews(query)
+Articles, err := client.GetBreakingNews(query)
 if err != nil {
     logger.Error(err.Error())
     return
 }
 
-logger.Info("Articles retrieved", "count", len(*articles))
+logger.Info("Articles retrieved", "count", len(*Articles))
 ```
 
 The client logger can be:
@@ -148,17 +135,17 @@ func main() {
         Timeframe:  "24",
     }
 
-    articles, err := client.LatestNews.AdvancedSearch("artificial intelligence", options)
+    Articles, err := client.LatestNews.AdvancedSearch("artificial intelligence", options)
     if err != nil {
         log.Fatal(err)
     }
 
     // Process results
-    for _, article := range *articles {
+    for _, Article := range *Articles {
         fmt.Printf("Title: %s\nSource: %s\nPublished: %s\n\n",
-            article.Title,
-            article.SourceName,
-            article.PubDate)
+            Article.Title,
+            Article.SourceName,
+            Article.PubDate)
     }
 }
 ```
