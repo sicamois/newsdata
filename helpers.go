@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-// Custom Unmarshaler for DateTime
 func (t *DateTime) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
@@ -26,22 +25,18 @@ func (t *DateTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Custom Marshaler for DateTime
 func (t *DateTime) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("\"%s\"", t.Time.Format(time.DateTime))), nil
 }
 
-// Define IsZero for DateTime
 func (t *DateTime) IsZero() bool {
 	return t.Time.IsZero()
 }
 
-// Define After for DateTime
 func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
 }
 
-// Custom Marshaler for AiTags
 func (t *Tags) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		*t = nil
@@ -55,7 +50,6 @@ func (t *Tags) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Custom Unmarshaler for SentimentStats
 func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	// If the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS"), handle it nicely
 	// Handle "null" case also
