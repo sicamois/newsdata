@@ -37,7 +37,8 @@ func TestGetBreakingNews(t *testing.T) {
 		Categories: []string{
 			"technology",
 		},
-		ExcludeFields: []string{"Title"},
+		ExcludeFields:    []string{"Title"},
+		RemoveDuplicates: "1",
 	}
 	articles, err := client.GetBreakingNews(query)
 	if err != nil {
