@@ -275,53 +275,53 @@ func structToMap(s interface{}) (map[string]string, error) {
 
 // Logger Helpers
 
-// A LevelHandler wraps a Handler with an Enabled method
+// A levelHandler wraps a Handler with an Enabled method
 // that returns false for levels below a minimum.
-type LevelHandler struct {
+type levelHandler struct {
 	level   slog.Leveler
 	handler slog.Handler
 	writer  io.Writer
 }
 
-// NewLevelHandler returns a LevelHandler with the given level.
+// NewlevelHandler returns a levelHandler with the given level.
 // All methods except Enabled delegate to h.
-func newLevelHandler(level slog.Leveler, h slog.Handler, w io.Writer) *LevelHandler {
-	// Optimization: avoid chains of LevelHandlers.
-	if lh, ok := h.(*LevelHandler); ok {
+func newlevelHandler(level slog.Leveler, h slog.Handler, w io.Writer) *levelHandler {
+	// Optimization: avoid chains of levelHandlers.
+	if lh, ok := h.(*levelHandler); ok {
 		h = lh.Handler()
 	}
-	return &LevelHandler{level, h, w}
+	return &levelHandler{level, h, w}
 }
 
 // Enabled implements Handler.Enabled by reporting whether
 // level is at least as large as h's level.
-func (h *LevelHandler) Enabled(_ context.Context, level slog.Level) bool {
+func (h *levelHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.level.Level()
 }
 
 // Handle implements Handler.Handle.
-func (h *LevelHandler) Handle(ctx context.Context, r slog.Record) error {
+func (h *levelHandler) Handle(ctx context.Context, r slog.Record) error {
 	return h.handler.Handle(ctx, r)
 }
 
 // WithAttrs implements Handler.WithAttrs.
-func (h *LevelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return newLevelHandler(h.level, h.handler.WithAttrs(attrs), h.writer)
+func (h *levelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return newlevelHandler(h.level, h.handler.WithAttrs(attrs), h.writer)
 }
 
 // WithGroup implements Handler.WithGroup.
-func (h *LevelHandler) WithGroup(name string) slog.Handler {
-	return newLevelHandler(h.level, h.handler.WithGroup(name), h.writer)
+func (h *levelHandler) WithGroup(name string) slog.Handler {
+	return newlevelHandler(h.level, h.handler.WithGroup(name), h.writer)
 }
 
 // Handler returns the Handler wrapped by h.
-func (h *LevelHandler) Handler() slog.Handler {
+func (h *levelHandler) Handler() slog.Handler {
 	return h.handler
 }
 
 // Create a new logger that writes on the chosen io.writer with the given level.
-func NewCustomLogger(w io.Writer, level slog.Level) *slog.Logger {
+func newCustomLogger(w io.Writer, level slog.Level) *slog.Logger {
 	th := slog.NewTextHandler(w, nil)
-	logger := slog.New(newLevelHandler(level, th, w))
+	logger := slog.New(newlevelHandler(level, th, w))
 	return logger
 }

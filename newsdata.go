@@ -241,7 +241,7 @@ type NewsdataClient struct {
 // newClient creates a new  NewsdataClient with default settings.
 // Timeout is set to 5 seconds by default.
 func NewClient(apiKey string) *NewsdataClient {
-	logger := NewCustomLogger(os.Stdout, slog.LevelInfo)
+	logger := newCustomLogger(os.Stdout, slog.LevelInfo)
 	return &NewsdataClient{
 		apiKey:  apiKey,
 		baseURL: "https://newsdata.io/api/1", // Base URL from the documentation
@@ -435,18 +435,18 @@ func (c *NewsdataClient) GetLogger() *slog.Logger {
 
 // CustomizeLogging customizes the logger used by the client.
 func (c *NewsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
-	customLogger := NewCustomLogger(w, level)
+	customLogger := newCustomLogger(w, level)
 	c.Logger = customLogger
 }
 
 // EnableDebug enables debug logging.
 func (c *NewsdataClient) EnableDebug() {
-	w := c.Logger.Handler().(*LevelHandler).writer
-	c.Logger = NewCustomLogger(w, slog.LevelDebug)
+	w := c.Logger.Handler().(*levelHandler).writer
+	c.Logger = newCustomLogger(w, slog.LevelDebug)
 }
 
 // DisableDebug disables debug logging.
 func (c *NewsdataClient) DisableDebug() {
-	w := c.Logger.Handler().(*LevelHandler).writer
-	c.Logger = NewCustomLogger(w, slog.LevelInfo)
+	w := c.Logger.Handler().(*levelHandler).writer
+	c.Logger = newCustomLogger(w, slog.LevelInfo)
 }
