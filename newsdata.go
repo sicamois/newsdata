@@ -306,6 +306,7 @@ func (c *newsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 
 		// Append results to the aggregate slice.
 		*articles = append(*articles, res.Articles...)
+		c.Logger.Debug("Articles retrieved", "#", len(*articles))
 
 		// Update page
 		if res.NextPage == "" || len(*articles) >= maxResults {
