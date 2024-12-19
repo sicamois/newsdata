@@ -60,7 +60,7 @@ type BreakingNewsQuery struct {
 	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
 	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
 	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  bool     `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
 	Size              int      `query:"size" validate:"min:1,max:50"`                         // Number of results per page
 	Page              string   `query:"page"`                                                 // Page ref
 }
@@ -131,7 +131,7 @@ type CryptoNewsQuery struct {
 	FullContent       string   `query:"full_content" validate:"in:binaries"`                  // If set to 1, only the articles with full_content response object will be returned, if set to 0, only the articles without full_content response object will be returned
 	Image             string   `query:"image" validate:"in:binaries"`                         // If set to 1, only the articles with featured image will be returned, if set to 0, only the articles without featured image will be returned
 	Video             string   `query:"video" validate:"in:binaries"`                         // If set to 1, only the articles with video will be returned, if set to 0, only the articles without video will be returned
-	RemoveDuplicates  bool     `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
+	RemoveDuplicates  string   `query:"removeduplicate" validate:"in:binaries"`               // If set to true, duplicate articles will be removed from the results
 	Sentiment         string   `query:"sentiment" validate:"in:sentiments"`                   // Filter by sentiment ("positive", "negative", "neutral")
 	Tags              []string `query:"tag" validate:"in:tags"`                               // Filter by crypto-specific tags
 	From              DateTime `query:"from_date" validate:"time:past"`                       // From date
