@@ -258,12 +258,6 @@ func structToMap(s interface{}) (map[string]string, error) {
 		if value.IsZero() {
 			continue
 		}
-		if tag == "removeduplicate" {
-			if value.Bool() {
-				result[tag] = "1"
-			}
-			continue
-		}
 		switch value.Kind() {
 		case reflect.Slice:
 			// Join slices into comma-separated strings
