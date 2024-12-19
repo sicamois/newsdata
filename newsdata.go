@@ -26,6 +26,7 @@ type pageSetter interface {
 	setPage(string)
 }
 
+// DateTime is used to format date as defined by the API
 type DateTime struct {
 	time.Time
 }
@@ -36,8 +37,7 @@ type Tag struct {
 	string
 }
 
-// BreakingNewsQuery represents the query parameters for the breaking news endpoint.
-// see https://newsdata.io/documentation/#latest-news
+// BreakingNewsQuery represents the query parameters for the breaking news endpoint. See https://newsdata.io/documentation/#latest-news
 type BreakingNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Query             string   `query:"q"`               // Main search term
@@ -65,8 +65,7 @@ type BreakingNewsQuery struct {
 	Page              string   `query:"page"`            // Page ref
 }
 
-// HistoricalNewsQuery represents the query parameters for the historical news endpoint.
-// see https://newsdata.io/documentation/#news-archive
+// HistoricalNewsQuery represents the query parameters for the historical news endpoint. See https://newsdata.io/documentation/#news-archive
 type HistoricalNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Query             string   `query:"q"`               // Main search term
@@ -91,8 +90,7 @@ type HistoricalNewsQuery struct {
 	Page              string   `query:"page"`            // Page ref
 }
 
-// CryptoNewsQuery represents the query parameters for the crypto news endpoint.
-// see https://newsdata.io/documentation/#crypto-news
+// CryptoNewsQuery represents the query parameters for the crypto news endpoint. See https://newsdata.io/documentation/#crypto-news
 type CryptoNewsQuery struct {
 	Id                []string `query:"id"`              // List of article IDs
 	Coins             []string `query:"coin"`            // List of coins
@@ -122,8 +120,7 @@ type CryptoNewsQuery struct {
 	Page              string   `query:"page"`            // Page ref
 }
 
-// SourcesQuery represents the query parameters for the sources endpoint.
-// see https://newsdata.io/documentation/#news-sources
+// SourcesQuery represents the query parameters for the sources endpoint. See https://newsdata.io/documentation/#news-sources
 type SourcesQuery struct {
 	Country        string `query:"country"`        // Filter by country code
 	Language       string `query:"language"`       // Filter by language code
@@ -132,8 +129,7 @@ type SourcesQuery struct {
 	domainurl      string `query:"domainurl"`      // Filter by domain URL (e.g., "nytimes.com")
 }
 
-// newsResponse represents the news API response.
-// see https://newsdata.io/documentation/#http_response
+// newsResponse represents the news API response. See https://newsdata.io/documentation/#http_response
 type newsResponse struct {
 	Status       string    `json:"status"`       // Response status ("success" or error message)
 	TotalResults int       `json:"totalResults"` // Total number of articles matching the query
@@ -141,8 +137,7 @@ type newsResponse struct {
 	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
-// sourcesResponse represents the news sources API response.
-// see https://newsdata.io/documentation/#news-sources
+// sourcesResponse represents the news sources API response. See https://newsdata.io/documentation/#news-sources
 type sourcesResponse struct {
 	Status       string   `json:"status"`       // Response status ("success" or error message)
 	TotalResults int      `json:"totalResults"` // Total number of news sources matching the query
@@ -158,14 +153,14 @@ type errorResponse struct {
 	} `json:"results"`
 }
 
+// SentimentStats represents the sentiment stats for a news article.
 type SentimentStats struct {
 	Positive float64 `json:"positive"`
 	Neutral  float64 `json:"neutral"`
 	Negative float64 `json:"negative"`
 }
 
-// article represents a news article.
-// see https://newsdata.io/documentation/#http_response
+// article represents a news article. See https://newsdata.io/documentation/#http_response
 type article struct {
 	Id             string         `json:"article_id"`
 	Title          string         `json:"title"`
@@ -194,8 +189,7 @@ type article struct {
 	Duplicate      bool           `json:"duplicate"`
 }
 
-// source represents a news source.
-// see https://newsdata.io/documentation/#news-sources
+// source represents a news source. See https://newsdata.io/documentation/#news-sources
 type source struct {
 	Id          string   `json:"id"`
 	Name        string   `json:"name"`

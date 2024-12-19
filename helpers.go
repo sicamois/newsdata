@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// DateTime Helpers
+// Custom Unmarshaler for DateTime
 func (t *DateTime) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
@@ -25,19 +25,22 @@ func (t *DateTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// Custom Marshaler for DateTime
 func (t *DateTime) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("\"%s\"", t.Time.Format(time.DateTime))), nil
 }
 
+// Define IsZero for DateTime
 func (t *DateTime) IsZero() bool {
 	return t.Time.IsZero()
 }
 
+// Define After for DateTime
 func (t *DateTime) After(other time.Time) bool {
 	return t.Time.After(other)
 }
 
-// AiTags Helpers
+// Custom Marshaler for AiTags
 func (t *Tags) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		*t = nil
@@ -51,7 +54,7 @@ func (t *Tags) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// SentimentStats Helpers
+// Custom Unmarshaler for SentimentStats
 func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	// If the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS"), handle it nicely
 	// Handle "null" case also
@@ -440,7 +443,10 @@ func structToMap(params interface{}) (map[string]string, error) {
 
 	result := make(map[string]string)
 	// dereference pointer with Elem() if needed
-	v := reflect.ValueOf(params).Elem()
+	v := reflect.ValueOf(params)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
 	if v.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("params must be a struct")
 	}
