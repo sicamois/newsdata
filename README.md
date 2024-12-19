@@ -179,7 +179,7 @@ The `newsResponse` struct represents the API response:
 | Languages        | []string | Filter by language codes (max 5)                        |
 | Tags             | []string | Filter by crypto-specific tags                          |
 | Sentiment        | string   | Filter by sentiment ("positive", "negative", "neutral") |
-| RemoveDuplicates | string   | Remove duplicate articles ("1" for true)              |
+| RemoveDuplicates | string   | Remove duplicate articles ("1" for true)                |
 | Size             | int      | Results per page (max 50)                               |
 
 → For details, see the [Crypto News API documentation](https://newsdata.io/documentation/#crypto-news)
