@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -329,55 +330,98 @@ func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-// fetchArticles fetches news Articles from the API.
-func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]Article, error) {
-	Articles := &[]Article{}
-
+func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action *func(*[]Article) error) error {
+	nbArticles := 0
 	page := ""
+	var wg sync.WaitGroup
+	errChan := make(chan error, 100)
+	defer close(errChan)
 
 	// Keep fetching pages until maxResults is reached or no more results.
-	for len(*Articles) < maxResults || maxResults == 0 {
+	for nbArticles < maxResults || maxResults == 0 {
 		query.setPage(page) // Set the page parameter
 
-		body, err := c.fetch(endpoint, query)
+		res, err := c.fetchNews(endpoint, query)
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		var res newsResponse
-		if err := json.Unmarshal(body, &res); err != nil {
-			return nil, err
-		}
-
 		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#Articles", len(res.Articles), "nextPage", res.NextPage)
-
 		if maxResults == 0 || res.TotalResults < maxResults {
 			maxResults = res.TotalResults
 		}
-
 		// Append results to the aggregate slice.
-		*Articles = append(*Articles, res.Articles...)
-		c.Logger.Debug("Articles retrieved", "#", len(*Articles))
+		nbArticles += len(res.Articles)
+		c.Logger.Debug("Articles retrieved", "#", nbArticles)
 
+		// Process articles
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := (*action)(&res.Articles); err != nil {
+				c.Logger.Error("Error processing articles", "error", err.Error())
+				errChan <- err
+			}
+		}()
+		select {
+		case err := <-errChan:
+			return err
+		default:
+			break
+		}
 		// Update page
-		if res.NextPage == "" || len(*Articles) >= maxResults {
+		if res.NextPage == "" || nbArticles >= maxResults {
 			if res.NextPage == "" {
 				c.Logger.Debug("All results fetched")
 			}
-			if len(*Articles) >= maxResults {
-				c.Logger.Debug("Max results reached", "maxResults", maxResults, "total #Articles", len(*Articles))
+			if nbArticles >= maxResults {
+				c.Logger.Debug("Max results reached", "maxResults", maxResults, "total #Articles", nbArticles)
 			}
 			break
 		}
 		page = res.NextPage
 	}
+	wg.Wait()
 
-	// Trim results to maxResults if necessary.
-	if len(*Articles) > maxResults {
-		*Articles = (*Articles)[:maxResults]
+	return nil
+}
+
+type safeArticles struct {
+	mu       sync.Mutex
+	articles *[]Article
+}
+
+// fetchArticles fetches news Articles from the API.
+func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]Article, error) {
+	Articles := safeArticles{articles: &[]Article{}}
+
+	addArticle := func(newArticles *[]Article) error {
+		Articles.mu.Lock()
+		*Articles.articles = append(*Articles.articles, *newArticles...)
+		Articles.mu.Unlock()
+		return nil
 	}
 
-	return Articles, nil
+	err := c.processArticles(endpoint, query, maxResults, &addArticle)
+	if err != nil {
+		return nil, err
+	}
+
+	// Trim results to maxResults if necessary.
+	if len(*Articles.articles) > maxResults {
+		*Articles.articles = (*Articles.articles)[:maxResults]
+	}
+
+	return Articles.articles, nil
+}
+
+// ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
+//
+// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
+func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults int, action func(*[]Article) error) error {
+	if err := query.Validate(); err != nil {
+		return err
+	}
+	return c.processArticles("/latest", &query, maxResults, &action)
 }
 
 // Get the latest news Articles in real-time from various sources worldwide.
@@ -389,6 +433,16 @@ func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int
 		return nil, err
 	}
 	return c.fetchArticles("/latest", &query, maxResults)
+}
+
+// ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
+//
+// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
+func (c *NewsdataClient) ProcessCreakingNews(query CryptoNewsQuery, maxResults int, action func(*[]Article) error) error {
+	if err := query.Validate(); err != nil {
+		return err
+	}
+	return c.processArticles("/crypto", &query, maxResults, &action)
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
@@ -409,6 +463,16 @@ func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults
 		return nil, err
 	}
 	return c.fetchArticles("/archive", &query, maxResults)
+}
+
+// ProcessHistoricalNews fetches historical news Articles from the API and processes them using the provided action function as a go routine.
+//
+// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
+func (c *NewsdataClient) ProcessHistoricalNews(query HistoricalNewsQuery, maxResults int, action func(*[]Article) error) error {
+	if err := query.Validate(); err != nil {
+		return err
+	}
+	return c.processArticles("/archive", &query, maxResults, &action)
 }
 
 // fetchSources fetches news sources from the API.
