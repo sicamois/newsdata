@@ -330,7 +330,7 @@ func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action *func(*[]Article) error) error {
+func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action func(*[]Article) error) error {
 	nbArticles := 0
 	page := ""
 	var wg sync.WaitGroup
@@ -357,7 +357,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := (*action)(&res.Articles); err != nil {
+			if err := action(&res.Articles); err != nil {
 				c.Logger.Error("Error processing articles", "error", err.Error())
 				errChan <- err
 			}
@@ -401,7 +401,7 @@ func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 		return nil
 	}
 
-	err := c.processArticles(endpoint, query, maxResults, &addArticle)
+	err := c.processArticles(endpoint, query, maxResults, addArticle)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +421,7 @@ func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults
 	if err := query.Validate(); err != nil {
 		return err
 	}
-	return c.processArticles("/latest", &query, maxResults, &action)
+	return c.processArticles("/latest", &query, maxResults, action)
 }
 
 // Get the latest news Articles in real-time from various sources worldwide.
@@ -442,7 +442,7 @@ func (c *NewsdataClient) ProcessCreakingNews(query CryptoNewsQuery, maxResults i
 	if err := query.Validate(); err != nil {
 		return err
 	}
-	return c.processArticles("/crypto", &query, maxResults, &action)
+	return c.processArticles("/crypto", &query, maxResults, action)
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
@@ -472,7 +472,7 @@ func (c *NewsdataClient) ProcessHistoricalNews(query HistoricalNewsQuery, maxRes
 	if err := query.Validate(); err != nil {
 		return err
 	}
-	return c.processArticles("/archive", &query, maxResults, &action)
+	return c.processArticles("/archive", &query, maxResults, action)
 }
 
 // fetchSources fetches news sources from the API.
