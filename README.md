@@ -80,7 +80,7 @@ defer file.Close()
 client.CustomizeLogging(file, slog.LevelInfo)
 
 // Get the logger for use in your application
-logger := client.Logger()
+logger := client.Logger
 
 // Use the logger for your own logging needs
 logger.Info("Starting news search...")

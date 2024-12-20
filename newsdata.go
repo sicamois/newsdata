@@ -16,18 +16,17 @@ type pageSetter interface {
 	setPage(string)
 }
 
-// DateTime is used to format date as defined by the API
+// DateTime is a wrapper around time.Time, used to format date as defined by the API
 type DateTime struct {
 	time.Time
 }
 
-// Tags is a structure for AI tags, AI Regions to handle the case where the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS")
-type Tags []Tag
-type Tag struct {
-	string
-}
+// Tags is is a wrapper around []string for coin-specific tags, AI tags & AI Regions, used to handle the case where the API returns a restriction message (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS")
+type Tags []string
 
-// BreakingNewsQuery represents the query parameters for the breaking news endpoint. See https://newsdata.io/documentation/#latest-news
+// BreakingNewsQuery represents the query parameters for the breaking news endpoint.
+//
+// See https://newsdata.io/documentation/#latest-news
 type BreakingNewsQuery struct {
 	Id                []string `query:"id"`                                                   // List of Article IDs
 	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
@@ -65,7 +64,9 @@ func (query *BreakingNewsQuery) Validate() error {
 	return validate(query)
 }
 
-// HistoricalNewsQuery represents the query parameters for the historical news endpoint. See https://newsdata.io/documentation/#news-archive
+// HistoricalNewsQuery represents the query parameters for the historical news endpoint.
+//
+// See https://newsdata.io/documentation/#news-archive
 type HistoricalNewsQuery struct {
 	Id                []string `query:"id"`                                                   // List of Article IDs
 	Query             string   `query:"q" validate:"maxlen:512"`                              // Main search term
@@ -100,7 +101,9 @@ func (query *HistoricalNewsQuery) Validate() error {
 	return validate(query)
 }
 
-// CryptoNewsQuery represents the query parameters for the crypto news endpoint. See https://newsdata.io/documentation/#crypto-news
+// CryptoNewsQuery represents the query parameters for the crypto news endpoint.
+//
+// See https://newsdata.io/documentation/#crypto-news
 type CryptoNewsQuery struct {
 	Id                []string `query:"id"`                                                   // List of Article IDs
 	Coins             []string `query:"coin"`                                                 // List of coins
@@ -140,7 +143,9 @@ func (query *CryptoNewsQuery) Validate() error {
 	return validate(query)
 }
 
-// SourcesQuery represents the query parameters for the sources endpoint. See https://newsdata.io/documentation/#news-sources
+// SourcesQuery represents the query parameters for the sources endpoint.
+//
+// See https://newsdata.io/documentation/#news-sources
 type SourcesQuery struct {
 	Country        string `query:"country" validate:"maxlen:5,in:countries"`     // Filter by country code
 	Language       string `query:"language" validate:"maxlen:5,in:languages"`    // Filter by language code
@@ -154,7 +159,9 @@ func (query *SourcesQuery) Validate() error {
 	return validate(query)
 }
 
-// newsResponse represents the news API response. See https://newsdata.io/documentation/#http_response
+// newsResponse represents the news API response.
+//
+// See https://newsdata.io/documentation/#http_response
 type newsResponse struct {
 	Status       string    `json:"status"`       // Response status ("success" or error message)
 	TotalResults int       `json:"totalResults"` // Total number of Articles matching the query
@@ -162,7 +169,9 @@ type newsResponse struct {
 	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
-// sourcesResponse represents the news sources API response. See https://newsdata.io/documentation/#news-sources
+// sourcesResponse represents the news sources API response.
+//
+// See https://newsdata.io/documentation/#news-sources
 type sourcesResponse struct {
 	Status       string   `json:"status"`       // Response status ("success" or error message)
 	TotalResults int      `json:"totalResults"` // Total number of news sources matching the query
@@ -185,7 +194,9 @@ type SentimentStats struct {
 	Negative float64 `json:"negative"`
 }
 
-// Article represents a news Article. See https://newsdata.io/documentation/#http_response
+// Article represents a news Article.
+//
+// See https://newsdata.io/documentation/#http_response
 type Article struct {
 	Id             string         `json:"Article_id"`
 	Title          string         `json:"title"`
@@ -214,7 +225,9 @@ type Article struct {
 	Duplicate      bool           `json:"duplicate"`
 }
 
-// Source represents a news source. See https://newsdata.io/documentation/#news-sources
+// Source represents a news source.
+//
+// See https://newsdata.io/documentation/#news-sources
 type Source struct {
 	Id          string   `json:"id"`
 	Name        string   `json:"name"`
@@ -230,6 +243,7 @@ type Source struct {
 
 // NewsdataClient is the base client to access NewsData API.
 // It provides methods to fetch news data.
+//
 // It handles the HTTP client and the Logger configurations.
 type NewsdataClient struct {
 	apiKey     string
@@ -239,15 +253,20 @@ type NewsdataClient struct {
 }
 
 // newClient creates a new  NewsdataClient with default settings.
+//
 // Timeout is set to 5 seconds by default.
 func NewClient(apiKey string) *NewsdataClient {
 	logger := newCustomLogger(os.Stdout, slog.LevelInfo)
 	return &NewsdataClient{
-		apiKey:  apiKey,
-		baseURL: "https://newsdata.io/api/1", // Base URL from the documentation
+		// newsdata.io API key
+		apiKey: apiKey,
+		// newsdata.io API base URL
+		baseURL: "https://newsdata.io/api/1",
+		// HTTP client is a *http.Client that can be customized
 		HTTPClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
+		// Logger is a *slog.Logger that can be customized
 		Logger: logger,
 	}
 }
@@ -363,8 +382,8 @@ func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 
 // Get the latest news Articles in real-time from various sources worldwide.
 // Filter by categories, countries, languages and more.
-// maxResults is the maximum number of Articles to fetch.
-// If set to 0, no limit is applied.
+//
+// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
@@ -373,8 +392,8 @@ func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
-// maxResults is the maximum number of Articles to fetch.
-// If set to 0, no limit is applied.
+//
+// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
@@ -383,8 +402,8 @@ func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery, maxResults int) (*
 }
 
 // Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
-// maxResults is the maximum number of Articles to fetch.
-// If set to 0, no limit is applied.
+//
+// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults int) (*[]Article, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
@@ -426,11 +445,6 @@ func (c *NewsdataClient) GetSources(query SourcesQuery) (*[]Source, error) {
 // SetTimeout sets the HTTP client timeout.
 func (c *NewsdataClient) SetTimeout(timeout time.Duration) {
 	c.HTTPClient.Timeout = timeout
-}
-
-// GetLogger returns the client logger
-func (c *NewsdataClient) GetLogger() *slog.Logger {
-	return c.Logger
 }
 
 // CustomizeLogging customizes the logger used by the client.

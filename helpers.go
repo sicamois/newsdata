@@ -38,14 +38,15 @@ func (t *DateTime) After(other time.Time) bool {
 }
 
 func (t *Tags) UnmarshalJSON(b []byte) error {
-	if string(b) == "null" {
+	value := string(b)
+	if value == "null" || strings.HasPrefix(value, "ONLY AVAILABLE IN ") {
 		*t = nil
 		return nil
 	}
 	tags := strings.Split(string(b), ",")
-	*t = make([]Tag, len(tags))
+	*t = make([]string, len(tags))
 	for i, tag := range tags {
-		(*t)[i] = Tag{tag}
+		(*t)[i] = tag
 	}
 	return nil
 }
