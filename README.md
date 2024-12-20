@@ -6,6 +6,7 @@ A Go client library for accessing the [newsdata.io](https://newsdata.io) API.
 
 - Support for Latest News, Crypto News, Historical News and Sources endpoints
 - Automatic pagination handling
+- Async article processing with custom actions
 - Customizable logging
 - Request timeout configuration
 - Result limiting
@@ -25,8 +26,6 @@ You need a [newsdata.io](https://newsdata.io) API key to use this library.
 → To get an API key, you can [sign up for a free account](https://newsdata.io/register).
 
 ## Usage
-
-### Basic Usages
 
 ```go
 // Create a new client
@@ -48,6 +47,63 @@ Sources, err := client.GetSources(SourcesQuery{
     Country: "us",
 })
 ```
+
+## Advanced Usage: Process Articles with Action
+
+The library provides methods to process articles asynchronously using custom action functions. This is useful for handling large result sets or performing real-time processing:
+
+```go
+func main() {
+    client := newsdata.NewClient("your-api-key")
+
+    // Define a custom action to process articles
+    processArticles := func(articles *[]Article) error {
+        for _, article := range *articles {
+            // Process each article (e.g., save to database, analyze content)
+            fmt.Printf("Processing article: %s\n", article.Title)
+        }
+        return nil
+    }
+
+    // Configure query
+    query := BreakingNewsQuery{
+        Query:     "artificial intelligence",
+        Languages: []string{"en"},
+        Categories: []string{"technology"},
+    }
+
+    // Process breaking news as they come in
+    err := client.ProcessBreakingNews(query, 100, processArticles)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Process historical news
+    historicalQuery := HistoricalNewsQuery{
+        Query: "artificial intelligence",
+        From:  DateTime{time.Now().AddDate(0, -1, 0)}, // Last month
+        To:    DateTime{time.Now()},
+    }
+
+    err = client.ProcessHistoricalNews(historicalQuery, 500, processArticles)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Process crypto news
+    cryptoQuery := CryptoNewsQuery{
+        Coins: []string{"BTC", "ETH"},
+        Tags:  []string{"mining", "regulation"},
+    }
+
+    err = client.ProcessCryptoNews(cryptoQuery, 200, processArticles)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+The Process methods execute the provided action function asynchronously (via go routines) for each batch of articles retrieved. This allows for efficient processing of large datasets and real-time handling of results.
 
 ## Advanced Client Configuration
 
