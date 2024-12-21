@@ -3,6 +3,7 @@ package newsdata
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -334,8 +335,11 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 	nbArticles := 0
 	page := ""
 	var wg sync.WaitGroup
-	errChan := make(chan error, 100)
-	defer close(errChan)
+	chanLen := 100
+	if maxResults > 0 {
+		chanLen = maxResults
+	}
+	errChan := make(chan error, chanLen)
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for nbArticles < maxResults || maxResults == 0 {
@@ -363,12 +367,13 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 				errChan <- err
 			}
 		}()
-		select {
-		case err := <-errChan:
-			return err
-		default:
-			break
+
+		// Check for errors as soon as possible
+		if len(errChan) > 0 {
+			err := <-errChan
+			return fmt.Errorf("%v", err.Error())
 		}
+
 		// Update page
 		if res.NextPage == "" || nbArticles >= maxResults {
 			if res.NextPage == "" {
@@ -382,6 +387,12 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		page = res.NextPage
 	}
 	wg.Wait()
+
+	// Check for residual errors
+	if len(errChan) > 0 {
+		err := <-errChan
+		return fmt.Errorf("%v", err.Error())
+	}
 
 	return nil
 }
