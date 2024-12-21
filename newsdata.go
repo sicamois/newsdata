@@ -305,6 +305,9 @@ func (c *NewsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
 	}
 	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
 
 	// Handle non-200 status codes.
 	if resp.StatusCode != http.StatusOK {
