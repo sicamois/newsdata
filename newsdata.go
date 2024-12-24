@@ -257,6 +257,7 @@ type NewsdataClient struct {
 // BatchInfos represents the information about the current batch of Articles being processed.
 type BatchInfos struct {
 	Num          int
+	StartingTime time.Time
 	Size         int
 	TotalFetched int
 	MaxResults   int
@@ -356,6 +357,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for nbArticles < maxResults || maxResults == 0 {
+		batchInfos.StartingTime = time.Now()
 		query.setPage(page) // Set the page parameter
 
 		res, err := c.fetchNews(endpoint, query)
@@ -418,7 +420,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		err := <-errChan
 		return fmt.Errorf("%v", err.Error())
 	}
-
+	c.Logger.Debug(fmt.Sprintf("Batch processed %d/%d", batchInfos.TotalFetched, batchInfos.TotalResults), "batch", batchInfos.Num, "size", batchInfos.Size, "totalFetched", batchInfos.TotalFetched, "maxResults", batchInfos.MaxResults, "totalResults", batchInfos.TotalResults, "duration", time.Since(batchInfos.StartingTime))
 	return nil
 }
 
