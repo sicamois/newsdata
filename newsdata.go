@@ -254,6 +254,15 @@ type NewsdataClient struct {
 	Logger     *slog.Logger
 }
 
+// BatchInfos represents the information about the current batch of Articles being processed.
+type BatchInfos struct {
+	Num          int
+	Size         int
+	TotalFetched int
+	MaxResults   int
+	TotalResults int
+}
+
 // newClient creates a new  NewsdataClient with default settings.
 //
 // Timeout is set to 5 seconds by default.
@@ -334,7 +343,7 @@ func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action func(*[]Article) error) error {
+func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action func(*[]Article, BatchInfos) error) error {
 	nbArticles := 0
 	page := ""
 	var wg sync.WaitGroup
@@ -343,6 +352,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		chanLen = maxResults
 	}
 	errChan := make(chan error, chanLen)
+	batchInfos := BatchInfos{Num: 0}
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for nbArticles < maxResults || maxResults == 0 {
@@ -360,12 +370,24 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		nbArticles += len(res.Articles)
 		c.Logger.Debug("Articles retrieved", "#", nbArticles)
 
+		// Update batchInfos
+		batchInfos.Size = len(res.Articles)
+		batchInfos.TotalFetched = nbArticles
+		batchInfos.TotalResults = res.TotalResults
+		if maxResults == 0 {
+			batchInfos.MaxResults = res.TotalResults
+		} else {
+			batchInfos.MaxResults = maxResults
+		}
+		// Increment batch number should be here, because everuthing gets evaluated before the go routine
+		batchInfos.Num++
+
 		// Process articles
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			c.Logger.Debug("Process articles with action", "endpoint", endpoint, "query", query)
-			if err := action(&res.Articles); err != nil {
+			c.Logger.Debug("Process articles with action", "endpoint", endpoint, "query", query, "batchInfos", batchInfos)
+			if err := action(&res.Articles, batchInfos); err != nil {
 				c.Logger.Error("Error processing articles", "error", err.Error())
 				errChan <- err
 			}
@@ -409,7 +431,8 @@ type safeArticles struct {
 func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]Article, error) {
 	Articles := safeArticles{articles: &[]Article{}}
 
-	addArticle := func(newArticles *[]Article) error {
+	addArticle := func(newArticles *[]Article, batchInfos BatchInfos) error {
+		c.Logger.Info("Add articles", "batch", batchInfos.Num, "size", batchInfos.Size, "totalFetched", batchInfos.TotalFetched, "maxResults", batchInfos.MaxResults, "totalResults", batchInfos.TotalResults)
 		Articles.mu.Lock()
 		*Articles.articles = append(*Articles.articles, *newArticles...)
 		Articles.mu.Unlock()
@@ -432,7 +455,7 @@ func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxRes
 // ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults int, action func(*[]Article) error) error {
+func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
 	if err := query.Validate(); err != nil {
 		return err
 	}
@@ -453,7 +476,7 @@ func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int
 // ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessCreakingNews(query CryptoNewsQuery, maxResults int, action func(*[]Article) error) error {
+func (c *NewsdataClient) ProcessCreakingNews(query CryptoNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
 	if err := query.Validate(); err != nil {
 		return err
 	}
@@ -483,7 +506,7 @@ func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults
 // ProcessHistoricalNews fetches historical news Articles from the API and processes them using the provided action function as a go routine.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessHistoricalNews(query HistoricalNewsQuery, maxResults int, action func(*[]Article) error) error {
+func (c *NewsdataClient) ProcessHistoricalNews(query HistoricalNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
 	if err := query.Validate(); err != nil {
 		return err
 	}
