@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func APIKey(t *testing.T) string {
@@ -51,6 +52,22 @@ func TestGetBreakingNews(t *testing.T) {
 		if Article.Title != "" {
 			t.Fatalf("Article title field is not exluded")
 		}
+	}
+}
+
+func TestGetHistoricalNews(t *testing.T) {
+	client := NewClient(APIKey(t))
+	query := HistoricalNewsQuery{
+		Query: "artificial intelligence",
+		From:  DateTime{Time: time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC)},
+		To:    DateTime{Time: time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC)},
+	}
+	Articles, err := client.GetHistoricalNews(query, 1)
+	if err != nil {
+		t.Fatalf("Error fetching History News: %v", err)
+	}
+	if len(*Articles) == 0 || len(*Articles) > 1 {
+		t.Fatalf("Invalid number of Articles: %d - should 1", len(*Articles))
 	}
 }
 
