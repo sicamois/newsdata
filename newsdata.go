@@ -353,11 +353,13 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		chanLen = maxResults
 	}
 	errChan := make(chan error, chanLen)
-	batchInfos := BatchInfos{Num: 0}
+	batchNum := 1
 
 	// Keep fetching pages until maxResults is reached or no more results.
 	for nbArticles < maxResults || maxResults == 0 {
-		batchInfos.StartingTime = time.Now()
+		batchInfos := BatchInfos{
+			Num:          batchNum,
+			StartingTime: time.Now()}
 		query.setPage(page) // Set the page parameter
 
 		res, err := c.fetchNews(endpoint, query)
@@ -381,8 +383,6 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		} else {
 			batchInfos.MaxResults = maxResults
 		}
-		// Increment batch number should be here, because everuthing gets evaluated before the go routine
-		batchInfos.Num++
 
 		// Process articles
 		wg.Add(1)
@@ -412,6 +412,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 			break
 		}
 		page = res.NextPage
+		batchNum++
 	}
 	wg.Wait()
 
@@ -420,7 +421,7 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		err := <-errChan
 		return fmt.Errorf("%v", err.Error())
 	}
-	c.Logger.Debug(fmt.Sprintf("Batch processed %d/%d", batchInfos.TotalFetched, batchInfos.TotalResults), "batch", batchInfos.Num, "size", batchInfos.Size, "totalFetched", batchInfos.TotalFetched, "maxResults", batchInfos.MaxResults, "totalResults", batchInfos.TotalResults, "duration", time.Since(batchInfos.StartingTime))
+	c.Logger.Debug(fmt.Sprintf("Batch %d processed", batchNum), "batch", batchNum)
 	return nil
 }
 
