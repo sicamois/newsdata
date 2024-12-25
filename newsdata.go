@@ -389,9 +389,9 @@ func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxR
 		go func() {
 			defer wg.Done()
 			c.Logger.Debug("Process articles with action", "endpoint", endpoint, "query", query, "batchInfos", batchInfos)
-			if err := action(&res.Articles, batchInfos); err != nil {
-				c.Logger.Error("Error processing articles", "error", err.Error())
-				errChan <- err
+			if actionErr := action(&res.Articles, batchInfos); actionErr != nil {
+				c.Logger.Error("Error processing articles", "error", actionErr.Error())
+				errChan <- actionErr
 			}
 		}()
 
