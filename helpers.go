@@ -25,18 +25,6 @@ func (t *DateTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (t *DateTime) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("\"%s\"", t.Time.Format(time.DateTime))), nil
-}
-
-func (t *DateTime) IsZero() bool {
-	return t.Time.IsZero()
-}
-
-func (t *DateTime) After(other time.Time) bool {
-	return t.Time.After(other)
-}
-
 func (t *Tags) UnmarshalJSON(b []byte) error {
 	value := string(b)
 	if value == "null" || strings.HasPrefix(value, "ONLY AVAILABLE IN ") {
@@ -61,8 +49,7 @@ func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	}
 
 	stats := make(map[string]float64)
-	err := json.Unmarshal(b, &stats)
-	if err != nil {
+	if err := json.Unmarshal(b, &stats); err != nil {
 		return err
 	}
 	positive, ok := stats["positive"]
@@ -111,6 +98,7 @@ func isValidTimeframe(timeframe string) bool {
 		if minutes < 0 || minutes > 2880 {
 			return false
 		}
+		return true
 	}
 	if hours < 0 || hours > 48 {
 		return false

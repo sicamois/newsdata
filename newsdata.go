@@ -254,16 +254,6 @@ type NewsdataClient struct {
 	Logger     *slog.Logger
 }
 
-// BatchInfos represents the information about the current batch of Articles being processed.
-type BatchInfos struct {
-	Num          int
-	StartingTime time.Time
-	Size         int
-	TotalFetched int
-	MaxResults   int
-	TotalResults int
-}
-
 // newClient creates a new  NewsdataClient with default settings.
 //
 // Timeout is set to 5 seconds by default.
