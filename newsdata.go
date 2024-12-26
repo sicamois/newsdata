@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -351,7 +350,7 @@ func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-func (c *NewsdataClient) generateArticles(endpoint string, query pagerValider, maxResults int) (<-chan Article, <-chan error) {
+func (c *NewsdataClient) pipeArticles(endpoint string, query pagerValider, maxResults int) (<-chan Article, <-chan error) {
 	out := make(chan Article)
 	errChan := make(chan error)
 	go func() {
@@ -389,30 +388,23 @@ func (c *NewsdataClient) generateArticles(endpoint string, query pagerValider, m
 
 // fetchArticles fetches news Articles from the API.
 func (c *NewsdataClient) fetchArticles(endpoint string, query pagerValider, maxResults int) (*[]Article, error) {
-	wg := sync.WaitGroup{}
-	out, errChan := c.generateArticles(endpoint, query, maxResults)
-	Articles := []Article{}
-	var generationError error
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for err := range errChan {
-			generationError = err
+	articleChan, errChan := c.pipeArticles(endpoint, query, maxResults)
+	articles := []Article{}
+	for {
+		select {
+		case article, ok := <-articleChan:
+			if !ok {
+				// Channel is closed, all articles have been processed
+				return &articles, nil
+			}
+			// Process each article
+			articles = append(articles, article)
+		case err := <-errChan:
+			if err != nil {
+				return nil, err
+			}
 		}
-	}()
-
-	for article := range out {
-		Articles = append(Articles, article)
 	}
-
-	// Be sure to wait for the error channel to be closed
-	wg.Wait()
-	if generationError != nil {
-		return nil, generationError
-	}
-
-	return &Articles, nil
 }
 
 // Get the latest news Articles in real-time from various sources worldwide.
@@ -423,11 +415,11 @@ func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int
 	return c.fetchArticles("/latest", &query, maxResults)
 }
 
-// GenerateBreakingNews generates breaking news Articles from the API and passes them to an Article channel for async processing.
+// PipeBreakingNews creates a "pipeline" (an Article channel) of breaking news Articles from the API and passes them to an Article channel for async processing.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) GenerateBreakingNews(query BreakingNewsQuery, maxResults int) (<-chan Article, <-chan error) {
-	return c.generateArticles("/latest", &query, maxResults)
+func (c *NewsdataClient) PipeBreakingNews(query BreakingNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.pipeArticles("/latest", &query, maxResults)
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
@@ -437,11 +429,11 @@ func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery, maxResults int) (*
 	return c.fetchArticles("/crypto", &query, maxResults)
 }
 
-// GenerateCryptoNews generates cryptocurrency-related news Articles from the API and passes them to an Article channel for async processing.
+// PipeCryptoNews creates a "pipeline" (an Article channel) cryptocurrency-related news Articles from the API and passes them to an Article channel for async processing.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) GenerateCryptoNews(query CryptoNewsQuery, maxResults int) (<-chan Article, <-chan error) {
-	return c.generateArticles("/crypto", &query, maxResults)
+func (c *NewsdataClient) PipeCryptoNews(query CryptoNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.pipeArticles("/crypto", &query, maxResults)
 }
 
 // Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
@@ -454,11 +446,11 @@ func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults
 	return c.fetchArticles("/archive", &query, maxResults)
 }
 
-// GenerateHistoricalNews generates historical news Articles from the API and passes them to an Article channel for async processing.
+// PipeHistoricalNews creates a "pipeline" (an Article channel) of historical news Articles from the API and passes them to an Article channel for async processing.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) GenerateHistoricalNews(query HistoricalNewsQuery, maxResults int) (<-chan Article, <-chan error) {
-	return c.generateArticles("/archive", &query, maxResults)
+func (c *NewsdataClient) PipeHistoricalNews(query HistoricalNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.pipeArticles("/archive", &query, maxResults)
 }
 
 // fetchSources fetches news sources from the API.
