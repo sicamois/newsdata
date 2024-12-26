@@ -50,6 +50,25 @@ Articles, err := client.GetBreakingNews(query, 100)
 Sources, err := client.GetSources(SourcesQuery{
     Country: "us",
 })
+
+// Get crypto news about Bitcoin
+cryptoQuery := CryptoNewsQuery{
+    Query: "Bitcoin",
+    Languages: []string{"en"},
+    Timeframe: "24",
+}
+
+CryptoArticles, err := client.GetCryptoNews(cryptoQuery, 50)
+
+// Search news archive
+historicalQuery := HistoricalNewsQuery{
+    Query: "Olympics",
+    Languages: []string{"en"},
+    From: "2021-07-23",
+    To: "2021-08-08",
+}
+
+HistoricalArticles, err := client.GetHistoricalNews(historicalQuery, 100)
 ```
 
 ## Asynchronous Processing with Pipe Functions
@@ -99,63 +118,6 @@ These functions are particularly useful when:
 - Implementing non-blocking article processing
 - Building asynchronous processing pipelines
 - Handling articles concurrently
-
-## Advanced Usage: Process Articles with Action
-
-The library provides methods to process articles asynchronously using custom action functions. This is useful for handling large result sets or performing real-time processing:
-
-```go
-func main() {
-    client := newsdata.NewClient("your-api-key")
-
-    // Define a custom action to process articles
-    processArticles := func(articles *[]Article) error {
-        for _, article := range *articles {
-            // Process each article (e.g., save to database, analyze content)
-            fmt.Printf("Processing article: %s\n", article.Title)
-        }
-        return nil
-    }
-
-    // Configure query
-    query := BreakingNewsQuery{
-        Query:     "artificial intelligence",
-        Languages: []string{"en"},
-        Categories: []string{"technology"},
-    }
-
-    // Process breaking news as they come in
-    err := client.ProcessBreakingNews(query, 100, processArticles)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Process historical news
-    historicalQuery := HistoricalNewsQuery{
-        Query: "artificial intelligence",
-        From:  DateTime{time.Now().AddDate(0, -1, 0)}, // Last month
-        To:    DateTime{time.Now()},
-    }
-
-    err = client.ProcessHistoricalNews(historicalQuery, 500, processArticles)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Process crypto news
-    cryptoQuery := CryptoNewsQuery{
-        Coins: []string{"BTC", "ETH"},
-        Tags:  []string{"mining", "regulation"},
-    }
-
-    err = client.ProcessCryptoNews(cryptoQuery, 200, processArticles)
-    if err != nil {
-        log.Fatal(err)
-    }
-}
-```
-
-The Process methods execute the provided action function asynchronously (via go routines) for each batch of articles retrieved. This allows for efficient processing of large datasets and real-time handling of results.
 
 ## Advanced Client Configuration
 
