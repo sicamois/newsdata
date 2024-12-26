@@ -207,7 +207,7 @@ func validate[T *BreakingNewsQuery | *CryptoNewsQuery | *HistoricalNewsQuery | *
 					return fmt.Errorf("field %v cannot be longer than %v", field.Name, ruleValue)
 				}
 			case "time":
-				t := value.Interface().(DateTime).Time
+				t := value.Interface().(time.Time)
 				switch ruleValue {
 				case "past":
 					if t.After(time.Now()) {
@@ -254,8 +254,7 @@ func structToMap(s interface{}) (map[string]string, error) {
 			continue
 		}
 		if tag == "from_date" || tag == "to_date" {
-			result[tag] = fmt.Sprintf("%v", value.FieldByName("Time").Interface().(time.Time).Format(time.DateTime))
-			continue
+			result[tag] = value.Interface().(time.Time).Format(time.DateOnly)
 		}
 		switch value.Kind() {
 		case reflect.Slice:
