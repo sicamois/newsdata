@@ -3,19 +3,18 @@ package newsdata
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
-	"sync"
 	"time"
 )
 
-// pageSetter is an interface for setting the page parameter.
-type pageSetter interface {
+// pagerValider is an interface for setting the page parameter and validating the query.
+type pagerValider interface {
 	setPage(string)
+	validate() error
 }
 
 // DateTime is a wrapper around time.Time, used to format date as defined by the API
@@ -62,7 +61,7 @@ func (q *BreakingNewsQuery) setPage(page string) {
 }
 
 // Validate validates the BreakingNewsQuery struct, ensuring all fields are valid.
-func (query *BreakingNewsQuery) Validate() error {
+func (query *BreakingNewsQuery) validate() error {
 	return validate(query)
 }
 
@@ -99,7 +98,7 @@ func (q *HistoricalNewsQuery) setPage(page string) {
 }
 
 // Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
-func (query *HistoricalNewsQuery) Validate() error {
+func (query *HistoricalNewsQuery) validate() error {
 	return validate(query)
 }
 
@@ -141,7 +140,7 @@ func (q *CryptoNewsQuery) setPage(page string) {
 }
 
 // Validate validates the CryptoNewsQuery struct, ensuring all fields are valid.
-func (query *CryptoNewsQuery) Validate() error {
+func (query *CryptoNewsQuery) validate() error {
 	return validate(query)
 }
 
@@ -157,7 +156,7 @@ type SourcesQuery struct {
 }
 
 // Validate validates the HistoricalNewsQuery struct, ensuring all fields are valid.
-func (query *SourcesQuery) Validate() error {
+func (query *SourcesQuery) validate() error {
 	return validate(query)
 }
 
@@ -344,125 +343,64 @@ func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsRes
 	return &data, nil
 }
 
-func (c *NewsdataClient) processArticles(endpoint string, query pageSetter, maxResults int, action func(*[]Article, BatchInfos) error) error {
-	nbArticles := 0
-	page := ""
-	var wg sync.WaitGroup
-	chanLen := 100
-	if maxResults > 0 {
-		chanLen = maxResults
-	}
-	errChan := make(chan error, chanLen)
-	batchNum := 1
-
-	// Keep fetching pages until maxResults is reached or no more results.
-	for nbArticles < maxResults || maxResults == 0 {
-		batchInfos := BatchInfos{
-			Num:          batchNum,
-			StartingTime: time.Now()}
-		query.setPage(page) // Set the page parameter
-
-		res, err := c.fetchNews(endpoint, query)
-		if err != nil {
-			return err
+func (c *NewsdataClient) generateArticles(endpoint string, query pagerValider, maxResults int) (<-chan Article, <-chan error) {
+	out := make(chan Article)
+	errChan := make(chan error)
+	go func() {
+		defer close(out)
+		defer close(errChan)
+		if err := query.validate(); err != nil {
+			errChan <- err
+			return
 		}
-		c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#Articles", len(res.Articles), "nextPage", res.NextPage)
-		if maxResults == 0 || res.TotalResults < maxResults {
-			maxResults = res.TotalResults
-		}
-		// Append results to the aggregate slice.
-		nbArticles += len(res.Articles)
-		c.Logger.Debug("Articles retrieved", "#", nbArticles)
-
-		// Update batchInfos
-		batchInfos.Size = len(res.Articles)
-		batchInfos.TotalFetched = nbArticles
-		batchInfos.TotalResults = res.TotalResults
-		if maxResults == 0 {
-			batchInfos.MaxResults = res.TotalResults
-		} else {
-			batchInfos.MaxResults = maxResults
-		}
-
-		// Process articles
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			c.Logger.Debug("Process articles with action", "endpoint", endpoint, "query", query, "batchInfos", batchInfos)
-			if actionErr := action(&res.Articles, batchInfos); actionErr != nil {
-				c.Logger.Error("Error processing articles", "error", actionErr.Error())
-				errChan <- actionErr
+		page := ""
+		index := 0
+		for {
+			query.setPage(page)
+			res, err := c.fetchNews(endpoint, query)
+			if err != nil {
+				errChan <- err
+				return
 			}
-		}()
-
-		// Check for errors as soon as possible
-		if len(errChan) > 0 {
-			err := <-errChan
-			return fmt.Errorf("%v", err.Error())
-		}
-
-		// Update page
-		if res.NextPage == "" || nbArticles >= maxResults {
-			if res.NextPage == "" {
-				c.Logger.Debug("All results fetched")
+			if maxResults == 0 {
+				maxResults = res.TotalResults
 			}
-			if nbArticles >= maxResults {
-				c.Logger.Debug("Max results reached", "maxResults", maxResults, "total #Articles", nbArticles)
+			for _, article := range res.Articles {
+				if index < maxResults {
+					out <- article
+					index++
+				} else {
+					return
+				}
 			}
-			break
+			page = res.NextPage
 		}
-		page = res.NextPage
-		batchNum++
-	}
-	wg.Wait()
-
-	// Check for residual errors
-	if len(errChan) > 0 {
-		err := <-errChan
-		return fmt.Errorf("%v", err.Error())
-	}
-	c.Logger.Debug(fmt.Sprintf("Batch %d processed", batchNum), "batch", batchNum)
-	return nil
-}
-
-type safeArticles struct {
-	mu       sync.Mutex
-	articles *[]Article
+	}()
+	return out, errChan
 }
 
 // fetchArticles fetches news Articles from the API.
-func (c *NewsdataClient) fetchArticles(endpoint string, query pageSetter, maxResults int) (*[]Article, error) {
-	Articles := safeArticles{articles: &[]Article{}}
+func (c *NewsdataClient) fetchArticles(endpoint string, query pagerValider, maxResults int) (*[]Article, error) {
+	out, errChan := c.generateArticles(endpoint, query, maxResults)
+	Articles := []Article{}
+	var generationError error
 
-	addArticle := func(newArticles *[]Article, batchInfos BatchInfos) error {
-		c.Logger.Info("Add articles", "batch", batchInfos.Num, "size", batchInfos.Size, "totalFetched", batchInfos.TotalFetched, "maxResults", batchInfos.MaxResults, "totalResults", batchInfos.TotalResults)
-		Articles.mu.Lock()
-		*Articles.articles = append(*Articles.articles, *newArticles...)
-		Articles.mu.Unlock()
-		return nil
+	go func() {
+		for err := range errChan {
+			slog.Warn("coucou")
+			generationError = err
+		}
+	}()
+
+	for article := range out {
+		Articles = append(Articles, article)
 	}
 
-	err := c.processArticles(endpoint, query, maxResults, addArticle)
-	if err != nil {
-		return nil, err
+	if generationError != nil {
+		return nil, generationError
 	}
 
-	// Trim results to maxResults if necessary.
-	if len(*Articles.articles) > maxResults {
-		*Articles.articles = (*Articles.articles)[:maxResults]
-	}
-
-	return Articles.articles, nil
-}
-
-// ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
-//
-// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
-	if err := query.Validate(); err != nil {
-		return err
-	}
-	return c.processArticles("/latest", &query, maxResults, action)
+	return &Articles, nil
 }
 
 // Get the latest news Articles in real-time from various sources worldwide.
@@ -470,50 +408,45 @@ func (c *NewsdataClient) ProcessBreakingNews(query BreakingNewsQuery, maxResults
 //
 // maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetBreakingNews(query BreakingNewsQuery, maxResults int) (*[]Article, error) {
-	if err := query.Validate(); err != nil {
-		return nil, err
-	}
 	return c.fetchArticles("/latest", &query, maxResults)
 }
 
-// ProcessBreakingNews fetches breaking news Articles from the API and processes them using the provided action function as a go routine.
+// GenerateBreakingNews generates breaking news Articles from the API and passes them to an Article channel for async processing.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessCreakingNews(query CryptoNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
-	if err := query.Validate(); err != nil {
-		return err
-	}
-	return c.processArticles("/crypto", &query, maxResults, action)
+func (c *NewsdataClient) GenerateBreakingNews(query BreakingNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.generateArticles("/latest", &query, maxResults)
 }
 
 // Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
 //
 // maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetCryptoNews(query CryptoNewsQuery, maxResults int) (*[]Article, error) {
-	if err := query.Validate(); err != nil {
-		return nil, err
-	}
 	return c.fetchArticles("/crypto", &query, maxResults)
+}
+
+// GenerateCryptoNews generates cryptocurrency-related news Articles from the API and passes them to an Article channel for async processing.
+//
+// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
+func (c *NewsdataClient) GenerateCryptoNews(query CryptoNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.generateArticles("/crypto", &query, maxResults)
 }
 
 // Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
 //
 // maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
 func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsQuery, maxResults int) (*[]Article, error) {
-	if err := query.Validate(); err != nil {
+	if err := query.validate(); err != nil {
 		return nil, err
 	}
 	return c.fetchArticles("/archive", &query, maxResults)
 }
 
-// ProcessHistoricalNews fetches historical news Articles from the API and processes them using the provided action function as a go routine.
+// GenerateHistoricalNews generates historical news Articles from the API and passes them to an Article channel for async processing.
 //
 // maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) ProcessHistoricalNews(query HistoricalNewsQuery, maxResults int, action func(*[]Article, BatchInfos) error) error {
-	if err := query.Validate(); err != nil {
-		return err
-	}
-	return c.processArticles("/archive", &query, maxResults, action)
+func (c *NewsdataClient) GenerateHistoricalNews(query HistoricalNewsQuery, maxResults int) (<-chan Article, <-chan error) {
+	return c.generateArticles("/archive", &query, maxResults)
 }
 
 // fetchSources fetches news sources from the API.
@@ -541,7 +474,7 @@ func (c *NewsdataClient) fetchSources(endpoint string, query *SourcesQuery) (*[]
 
 // Get information about available news sources with filters for country, category, language and priority level.
 func (c *NewsdataClient) GetSources(query SourcesQuery) (*[]Source, error) {
-	if err := query.Validate(); err != nil {
+	if err := query.validate(); err != nil {
 		return nil, err
 	}
 	return c.fetchSources("/sources", &query)

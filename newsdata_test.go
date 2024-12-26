@@ -41,12 +41,12 @@ func TestGetBreakingNews(t *testing.T) {
 		ExcludeFields:    []string{"Title"},
 		RemoveDuplicates: "1",
 	}
-	Articles, err := client.GetBreakingNews(query, 1)
+	Articles, err := client.GetBreakingNews(query, 88)
 	if err != nil {
 		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
-	if len(*Articles) == 0 || len(*Articles) > 1 {
-		t.Fatalf("Invalid number of Articles: %d - should 1", len(*Articles))
+	if len(*Articles) == 0 || len(*Articles) != 88 {
+		t.Fatalf("Invalid number of Articles: %d - should 88", len(*Articles))
 	}
 	for _, Article := range *Articles {
 		if Article.Title != "" {
@@ -55,8 +55,43 @@ func TestGetBreakingNews(t *testing.T) {
 	}
 }
 
+func TestGenerateBreakingNews(t *testing.T) {
+	client := NewClient(APIKey(t))
+	query := BreakingNewsQuery{
+		Query:     "artificial intelligence",
+		Languages: []string{"en"},
+		Categories: []string{
+			"technology",
+		},
+		ExcludeFields:    []string{"Title"},
+		RemoveDuplicates: "1",
+	}
+	out, errChan := client.GenerateBreakingNews(query, 88)
+	Articles := []Article{}
+	var generationError error
+
+	go func() {
+		for err := range errChan {
+			generationError = err
+		}
+	}()
+
+	for article := range out {
+		Articles = append(Articles, article)
+	}
+
+	if generationError != nil {
+		t.Fatalf("Error fetching Breaking News: %v", generationError)
+	}
+
+	if len(Articles) == 0 || len(Articles) != 88 {
+		t.Fatalf("Invalid number of Articles: %d - should 88", len(Articles))
+	}
+}
+
 func TestGetHistoricalNews(t *testing.T) {
 	client := NewClient(APIKey(t))
+	// client.SetTimeout(1 * time.Second)
 	query := HistoricalNewsQuery{
 		Query: "artificial intelligence",
 		From:  DateTime{Time: time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC)},
