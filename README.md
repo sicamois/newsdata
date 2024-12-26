@@ -8,6 +8,7 @@ A Go client library for accessing the [newsdata.io](https://newsdata.io) API.
 ## Key Features
 
 - Support for Latest News, Crypto News, Historical News and Sources endpoints
+- Asynchronous article processing through pipe functions
 - Automatic pagination handling
 - Async article processing with custom actions
 - Customizable logging
@@ -50,6 +51,54 @@ Sources, err := client.GetSources(SourcesQuery{
     Country: "us",
 })
 ```
+
+## Asynchronous Processing with Pipe Functions
+
+The library provides efficient asynchronous processing capabilities through its Pipe functions. These functions return channels that allow for non-blocking article processing:
+
+```go
+// Create a new client
+client := newsdata.NewClient("your-api-key")
+
+// Configure query
+query := BreakingNewsQuery{
+    Query:     "artificial intelligence",
+    Languages: []string{"en"},
+}
+
+// Get channels for articles and errors
+articleChan, errChan := client.PipeBreakingNews(query, 100)
+
+// Process articles asynchronously
+for {
+    select {
+    case article, ok := <-articleChan:
+        if !ok {
+            // Channel is closed, all articles have been processed
+            return
+        }
+        // Process each article asynchronously
+        fmt.Printf("Processing article: %s\n", article.Title)
+    case err := <-errChan:
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+}
+```
+
+Similar pipe functions are available for other endpoints:
+
+- `PipeBreakingNews`: Process latest news articles asynchronously
+- `PipeHistoricalNews`: Process historical news articles asynchronously
+- `PipeCryptoNews`: Process cryptocurrency news articles asynchronously
+
+These functions are particularly useful when:
+
+- Processing large datasets efficiently
+- Implementing non-blocking article processing
+- Building asynchronous processing pipelines
+- Handling articles concurrently
 
 ## Advanced Usage: Process Articles with Action
 
