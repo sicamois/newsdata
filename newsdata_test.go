@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func APIKey(t *testing.T) string {
@@ -29,58 +30,52 @@ func APIKey(t *testing.T) string {
 	return apiKey
 }
 
-// func TestGetBreakingNews(t *testing.T) {
-// 	client := NewClient(APIKey(t))
-// 	query := BreakingNewsRequest{
-// 		Query:     "artificial intelligence",
-// 		Languages: []string{"en"},
-// 		Categories: []string{
-// 			"technology",
-// 		},
-// 		ExcludeFields:    []string{"Title"},
-// 		RemoveDuplicates: "1",
-// 	}
-// 	Articles, err := client.GetBreakingNews(query, 88)
-// 	if err != nil {
-// 		t.Fatalf("Error fetching Breaking News: %v", err)
-// 	}
-// 	if len(*Articles) == 0 || len(*Articles) != 88 {
-// 		t.Fatalf("Invalid number of Articles: %d - should 88", len(*Articles))
-// 	}
-// 	for _, Article := range *Articles {
-// 		if Article.Title != "" {
-// 			t.Fatalf("Article title field is not exluded")
-// 		}
-// 	}
-// }
+func TestGetArticles(t *testing.T) {
+	client := NewClient(APIKey(t))
+	req := client.NewArticleRequest(LatestNews, "artificial intelligence").
+		WithLanguages("en").
+		WithCategories("technology").
+		WithFieldsExcluded("Title").
+		WithRemoveDuplicates()
 
-// func TestGetHistoricalNews(t *testing.T) {
-// 	client := NewClient(APIKey(t))
-// 	// client.SetTimeout(1 * time.Second)
-// 	query := HistoricalNewsRequest{
-// 		Query: "artificial intelligence",
-// 		From:  time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC),
-// 		To:    time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC),
-// 	}
-// 	Articles, err := client.GetHistoricalNews(query, 100)
-// 	if err != nil {
-// 		t.Fatalf("Error fetching History News: %v", err)
-// 	}
-// 	if len(*Articles) == 0 || len(*Articles) != 100 {
-// 		t.Fatalf("Invalid number of Articles: %d - should 100", len(*Articles))
-// 	}
-// }
+	Articles, err := client.GetArticles(req, 88)
+	if err != nil {
+		t.Fatalf("Error fetching Breaking News: %v", err)
+	}
+	if len(*Articles) == 0 || len(*Articles) != 88 {
+		t.Fatalf("Invalid number of Articles: %d - should 88", len(*Articles))
+	}
+	for _, Article := range *Articles {
+		if Article.Title != "" {
+			t.Fatalf("Article title field is not exluded")
+		}
+	}
+}
 
-// func TestGetSources(t *testing.T) {
-// 	client := NewClient(APIKey(t))
-// 	options := SourcesRequest{
-// 		Country: "us",
-// 	}
-// 	sources, err := client.GetSources(options)
-// 	if err != nil {
-// 		t.Fatalf("Error fetching Sources: %v", err)
-// 	}
-// 	if len(*sources) == 0 {
-// 		t.Fatalf("No sources found")
-// 	}
-// }
+func TestGetArticlesFromArchive(t *testing.T) {
+	client := NewClient(APIKey(t))
+	req := client.NewArticleRequest(NewsArchive, "artificial intelligence").
+		WithFromDate(time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC)).
+		WithToDate(time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC))
+	Articles, err := client.GetArticles(req, 100)
+	if err != nil {
+		t.Fatalf("Error fetching History News: %v", err)
+	}
+	if len(*Articles) == 0 || len(*Articles) != 100 {
+		t.Fatalf("Invalid number of Articles: %d - should 100", len(*Articles))
+	}
+}
+
+func TestGetSources(t *testing.T) {
+	client := NewClient(APIKey(t))
+	req := client.NewSourceRequest().
+		WithCategory("technology").
+		WithLanguage("fr")
+	sources, err := client.GetSources(req)
+	if err != nil {
+		t.Fatalf("Error fetching Sources: %v", err)
+	}
+	if len(*sources) == 0 {
+		t.Fatalf("No sources found")
+	}
+}
