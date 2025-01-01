@@ -1,5 +1,8 @@
 # NewsData.io Go Client
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/sicamois/newsdata.svg)](https://pkg.go.dev/github.com/sicamois/newsdata)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sicamois/newsdata)](https://goreportcard.com/report/github.com/sicamois/newsdata)
+
 A Go client library for the [NewsData.io](https://newsdata.io) API that provides easy access to news articles and sources.
 
 ## Features
