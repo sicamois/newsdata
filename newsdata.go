@@ -1,6 +1,7 @@
 package newsdata
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,31 +16,58 @@ import (
 // NewsdataClient is the base client to access NewsData API.
 // It provides methods to fetch news data.
 //
-// It handles the HTTP client and the Logger configurations.
+// It handles the HTTP client and the logger configurations.
 type NewsdataClient struct {
 	apiKey     string
 	baseURL    string
-	HTTPClient *http.Client
-	Logger     *slog.Logger
+	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // newClient creates a new  NewsdataClient with default settings.
 //
 // Timeout is set to 5 seconds by default.
 func NewClient(apiKey string) *NewsdataClient {
-	logger := newCustomLogger(os.Stdout, slog.LevelInfo)
 	return &NewsdataClient{
 		// newsdata.io API key
 		apiKey: apiKey,
 		// newsdata.io API base URL
 		baseURL: "https://newsdata.io/api/1",
 		// HTTP client is a *http.Client that can be customized
-		HTTPClient: &http.Client{
+		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		// Logger is a *slog.Logger that can be customized
-		Logger: logger,
+		// logger is a *slog.logger that can be customized
+		logger: newCustomLogger(os.Stdout, slog.LevelInfo),
 	}
+}
+
+// SetTimeout sets the HTTP client timeout.
+func (c *NewsdataClient) SetTimeout(timeout time.Duration) {
+	c.httpClient.Timeout = timeout
+}
+
+// CustomizeLogging customizes the logger used by the client.
+func (c *NewsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
+	customlogger := newCustomLogger(w, level)
+	c.logger = customlogger
+}
+
+// EnableDebug enables debug logging.
+func (c *NewsdataClient) EnableDebug() {
+	w := c.logger.Handler().(*levelHandler).writer
+	c.logger = newCustomLogger(w, slog.LevelDebug)
+}
+
+// DisableDebug disables debug logging.
+func (c *NewsdataClient) DisableDebug() {
+	w := c.logger.Handler().(*levelHandler).writer
+	c.logger = newCustomLogger(w, slog.LevelInfo)
+}
+
+// Logger() returns the logger
+func (c *NewsdataClient) Logger() *slog.Logger {
+	return c.logger
 }
 
 // DateTime is a wrapper around time.Time, used to format date as defined by the API
@@ -53,6 +81,9 @@ type SentimentStats struct {
 	Neutral  float64 `json:"neutral"`
 	Negative float64 `json:"negative"`
 }
+
+// Tags is is a wrapper around []string for coin-specific tags, AI tags & AI Regions, used to handle the case where the API returns a restriction message (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS")
+type Tags []string
 
 // Article represents a news Article.
 //
@@ -95,6 +126,130 @@ type newsResponse struct {
 	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
+// errorResponse represents the API response when an error happened.
+type errorResponse struct {
+	Status string `json:"status"` // Response status ("error")
+	Error  struct {
+		Message string `json:"message"` // Error message
+		Code    string `json:"code"`    // Error code
+	} `json:"results"`
+}
+
+// fetch sends an HTTP request and decodes the response.
+func (c *NewsdataClient) fetch(context context.Context, endpoint string, params map[string]string) ([]byte, error) {
+	// Construct the full URL with query parameters.
+	reqURL, err := url.Parse(c.baseURL + endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert struct-based query parameters to URL query parameters.
+	query := reqURL.Query()
+	for key, value := range params {
+		query.Add(key, value)
+	}
+	reqURL.RawQuery = query.Encode()
+
+	// Create and execute the HTTP request.
+	c.logger.Debug("Request", "url", reqURL.String())
+	req, err := http.NewRequest("GET", reqURL.String(), nil)
+	req = req.WithContext(context)
+	if err != nil {
+		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+	}
+	req.Header.Set("X-ACCESS-KEY", c.apiKey)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+	}
+	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+	}
+
+	// Handle non-200 status codes.
+	if resp.StatusCode != http.StatusOK {
+		var errorData errorResponse
+		if err := json.Unmarshal(body, &errorData); err != nil {
+			return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+		}
+		slog.Error("Error reading response body", "error", errors.New(errorData.Error.Message), "url", reqURL.String())
+		return nil, fmt.Errorf("%s - url: %s", errorData.Error.Message, reqURL.String())
+	}
+
+	return body, nil
+}
+
+func (c *NewsdataClient) fetchNews(req articleRequest) (*newsResponse, error) {
+	body, err := c.fetch(req.context, req.service.Endpoint(), req.params)
+	if err != nil {
+		return nil, err
+	}
+	// Decode the JSON response.
+	var data newsResponse
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
+// StreamArticles streams news Articles from the API.
+func (c *NewsdataClient) StreamArticles(req articleRequest, maxResults int) (<-chan Article, <-chan error) {
+	out := make(chan Article)
+	errChan := make(chan error)
+	go func() {
+		defer close(out)
+		defer close(errChan)
+		page := ""
+		index := 0
+		for {
+			if page != "" {
+				req.params["page"] = page
+			}
+			res, err := c.fetchNews(req)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			if maxResults == 0 {
+				maxResults = res.TotalResults
+			}
+			for _, article := range res.Articles {
+				if index < maxResults {
+					out <- article
+					index++
+				} else {
+					return
+				}
+			}
+			page = res.NextPage
+		}
+	}()
+	return out, errChan
+}
+
+// GetArticles fetches news Articles from the API.
+func (c *NewsdataClient) GetArticles(req articleRequest, maxResults int) (*[]Article, error) {
+	articleChan, errChan := c.StreamArticles(req, maxResults)
+	articles := []Article{}
+	for {
+		select {
+		case article, ok := <-articleChan:
+			if !ok {
+				// Channel is closed, all articles have been processed
+				return &articles, nil
+			}
+			// Process each article
+			articles = append(articles, article)
+		case err := <-errChan:
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+}
+
 // Source represents a news source.
 //
 // See https://newsdata.io/documentation/#news-sources
@@ -120,190 +275,11 @@ type sourcesResponse struct {
 	Sources      []Source `json:"results"`      // Array of news sources
 }
 
-// errorResponse represents the API response when an error happened.
-type errorResponse struct {
-	Status string `json:"status"` // Response status ("error")
-	Error  struct {
-		Message string `json:"message"` // Error message
-		Code    string `json:"code"`    // Error code
-	} `json:"results"`
-}
-
-// fetch sends an HTTP request and decodes the response.
-func (c *NewsdataClient) fetch(endpoint string, q interface{}) ([]byte, error) {
-	// Construct the full URL with query parameters.
-	reqURL, err := url.Parse(c.baseURL + endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert struct-based query parameters to URL query parameters.
-	query := reqURL.Query()
-	paramMap, err := structToMap(q)
-	if err != nil {
-		return nil, err
-	}
-	for key, value := range paramMap {
-		// Dirty fix for date format - value in map is "2024-12-01 00:00:00 +0000 UTC" and it should be "2024-12-01"
-		if key == "from_date" || key == "to_date" {
-			query.Add(key, value[:10])
-		} else {
-			query.Add(key, value)
-		}
-	}
-	reqURL.RawQuery = query.Encode()
-
-	// Create and execute the HTTP request.
-	c.Logger.Debug("Request", "url", reqURL.String())
-	req, err := http.NewRequest("GET", reqURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
-	}
-	req.Header.Set("X-ACCESS-KEY", c.apiKey)
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
-	}
-	body, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
-	}
-
-	// Handle non-200 status codes.
-	if resp.StatusCode != http.StatusOK {
-		var errorData errorResponse
-		if err := json.Unmarshal(body, &errorData); err != nil {
-			return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
-		}
-		slog.Error("Error reading response body", "error", errors.New(errorData.Error.Message), "url", reqURL.String())
-		return nil, fmt.Errorf("%s - url: %s", errorData.Error.Message, reqURL.String())
-	}
-
-	return body, nil
-}
-
-func (c *NewsdataClient) fetchNews(endpoint string, query interface{}) (*newsResponse, error) {
-	body, err := c.fetch(endpoint, query)
-	if err != nil {
-		return nil, err
-	}
-	// Decode the JSON response.
-	var data newsResponse
-	if err := json.Unmarshal(body, &data); err != nil { // Parse []byte to go struct pointer
-		return nil, err
-	}
-	return &data, nil
-}
-
-func (c *NewsdataClient) streamArticles(endpoint string, query pagerValider, maxResults int) (<-chan Article, <-chan error) {
-	out := make(chan Article)
-	errChan := make(chan error)
-	go func() {
-		defer close(out)
-		defer close(errChan)
-		if err := query.validate(); err != nil {
-			errChan <- err
-			return
-		}
-		page := ""
-		index := 0
-		for {
-			query.setPage(page)
-			res, err := c.fetchNews(endpoint, query)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			if maxResults == 0 {
-				maxResults = res.TotalResults
-			}
-			for _, article := range res.Articles {
-				if index < maxResults {
-					out <- article
-					index++
-				} else {
-					return
-				}
-			}
-			page = res.NextPage
-		}
-	}()
-	return out, errChan
-}
-
-// fetchArticles fetches news Articles from the API.
-func (c *NewsdataClient) fetchArticles(endpoint string, query pagerValider, maxResults int) (*[]Article, error) {
-	articleChan, errChan := c.streamArticles(endpoint, query, maxResults)
-	articles := []Article{}
-	for {
-		select {
-		case article, ok := <-articleChan:
-			if !ok {
-				// Channel is closed, all articles have been processed
-				return &articles, nil
-			}
-			// Process each article
-			articles = append(articles, article)
-		case err := <-errChan:
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-}
-
-// Get the latest news Articles in real-time from various sources worldwide.
-// Filter by categories, countries, languages and more.
-//
-// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
-func (c *NewsdataClient) GetBreakingNews(query BreakingNewsRequest, maxResults int) (*[]Article, error) {
-	return c.fetchArticles("/latest", &query, maxResults)
-}
-
-// StreamBreakingNews creates a "pipeline" (an Article channel) of breaking news Articles from the API and passes them to an Article channel for async processing.
-//
-// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) StreamBreakingNews(query BreakingNewsRequest, maxResults int) (<-chan Article, <-chan error) {
-	return c.streamArticles("/latest", &query, maxResults)
-}
-
-// Get cryptocurrency-related news with additional filters like coin symbols, sentiment analysis, and specialized crypto tags.
-//
-// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
-func (c *NewsdataClient) GetCryptoNews(query CryptoNewsRequest, maxResults int) (*[]Article, error) {
-	return c.fetchArticles("/crypto", &query, maxResults)
-}
-
-// StreamCryptoNews creates a "pipeline" (an Article channel) cryptocurrency-related news Articles from the API and passes them to an Article channel for async processing.
-//
-// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) StreamCryptoNews(query CryptoNewsRequest, maxResults int) (<-chan Article, <-chan error) {
-	return c.streamArticles("/crypto", &query, maxResults)
-}
-
-// Search through news archives with date range filters while maintaining all filtering capabilities of breaking news.
-//
-// maxResults is the maximum number of Articles to fetch. If set to 0, no limit is applied.
-func (c *NewsdataClient) GetHistoricalNews(query HistoricalNewsRequest, maxResults int) (*[]Article, error) {
-	if err := query.validate(); err != nil {
-		return nil, err
-	}
-	return c.fetchArticles("/archive", &query, maxResults)
-}
-
-// StreamHistoricalNews creates a "pipeline" (an Article channel) of historical news Articles from the API and passes them to an Article channel for async processing.
-//
-// maxResults is the maximum number of Articles to process. If set to 0, no limit is applied.
-func (c *NewsdataClient) StreamHistoricalNews(query HistoricalNewsRequest, maxResults int) (<-chan Article, <-chan error) {
-	return c.streamArticles("/archive", &query, maxResults)
-}
-
-// fetchSources fetches news sources from the API.
-func (c *NewsdataClient) fetchSources(endpoint string, query *SourcesRequest) (*[]Source, error) {
+// GetSources fetches news sources from the API.
+func (c *NewsdataClient) GetSources(req sourceRequest) (*[]Source, error) {
 	sources := &[]Source{}
 
-	body, err := c.fetch(endpoint, query)
+	body, err := c.fetch(req.context, "/sources", req.params)
 	if err != nil {
 		return nil, err
 	}
@@ -314,41 +290,10 @@ func (c *NewsdataClient) fetchSources(endpoint string, query *SourcesRequest) (*
 		return nil, err
 	}
 
-	c.Logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
+	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
 
 	// Append results to the aggregate slice.
 	*sources = append(*sources, res.Sources...)
 
 	return sources, nil
-}
-
-// Get information about available news sources with filters for country, category, language and priority level.
-func (c *NewsdataClient) GetSources(query SourcesRequest) (*[]Source, error) {
-	if err := query.validate(); err != nil {
-		return nil, err
-	}
-	return c.fetchSources("/sources", &query)
-}
-
-// SetTimeout sets the HTTP client timeout.
-func (c *NewsdataClient) SetTimeout(timeout time.Duration) {
-	c.HTTPClient.Timeout = timeout
-}
-
-// CustomizeLogging customizes the logger used by the client.
-func (c *NewsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
-	customLogger := newCustomLogger(w, level)
-	c.Logger = customLogger
-}
-
-// EnableDebug enables debug logging.
-func (c *NewsdataClient) EnableDebug() {
-	w := c.Logger.Handler().(*levelHandler).writer
-	c.Logger = newCustomLogger(w, slog.LevelDebug)
-}
-
-// DisableDebug disables debug logging.
-func (c *NewsdataClient) DisableDebug() {
-	w := c.Logger.Handler().(*levelHandler).writer
-	c.Logger = newCustomLogger(w, slog.LevelInfo)
 }
