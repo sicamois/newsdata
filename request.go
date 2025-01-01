@@ -43,7 +43,8 @@ func (service newsService) Endpoint() string {
 	return ""
 }
 
-type articleRequest struct {
+// ArticleRequest represents a request for news articles.
+type ArticleRequest struct {
 	service newsService
 	context context.Context
 	params  map[string]string
@@ -51,8 +52,8 @@ type articleRequest struct {
 }
 
 // NewArticleRequest creates a new article request with the specified service and query.
-func (c *NewsdataClient) NewArticleRequest(service newsService, query string) articleRequest {
-	req := articleRequest{
+func (c *NewsdataClient) NewArticleRequest(service newsService, query string) ArticleRequest {
+	req := ArticleRequest{
 		service: service,
 		context: context.Background(),
 		params:  make(map[string]string),
@@ -67,8 +68,8 @@ func (c *NewsdataClient) NewArticleRequest(service newsService, query string) ar
 }
 
 // NewArticleRequestById creates a new article request to fetch articles by their IDs.
-func (c *NewsdataClient) NewArticleRequestById(service newsService, ids ...string) articleRequest {
-	req := articleRequest{
+func (c *NewsdataClient) NewArticleRequestById(service newsService, ids ...string) ArticleRequest {
+	req := ArticleRequest{
 		service: service,
 		context: context.Background(),
 		params:  make(map[string]string),
@@ -87,13 +88,13 @@ func (c *NewsdataClient) NewArticleRequestById(service newsService, ids ...strin
 }
 
 // WithContext sets the context for the article request.
-func (req articleRequest) WithContext(context context.Context) articleRequest {
+func (req ArticleRequest) WithContext(context context.Context) ArticleRequest {
 	req.context = context
 	return req
 }
 
 // WithQueryInTitle adds a query to search in article titles.
-func (req articleRequest) WithQueryInTitle(query string) articleRequest {
+func (req ArticleRequest) WithQueryInTitle(query string) ArticleRequest {
 	if req.params["qInMeta"] != "" {
 		req.logger.Error("newsdata: query in title and metadata cannot be used together")
 		return req
@@ -107,7 +108,7 @@ func (req articleRequest) WithQueryInTitle(query string) articleRequest {
 }
 
 // WithQueryInMetadata adds a query to search in article metadata.
-func (req articleRequest) WithQueryInMetadata(query string) articleRequest {
+func (req ArticleRequest) WithQueryInMetadata(query string) ArticleRequest {
 	if req.params["qInTitle"] != "" {
 		req.logger.Error("newsdata: query in title and metadata cannot be used together")
 		return req
@@ -140,7 +141,7 @@ func validateCategories(categories []string, logger *slog.Logger) []string {
 // WithCategories adds category filters to the article request, maximum 5 categories.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed categories.
 //
 // You can use either the 'categories' parameter to include specific categories or the 'excludecategories' parameter to exclude them, but not both simultaneously.
-func (req articleRequest) WithCategories(categories ...string) articleRequest {
+func (req ArticleRequest) WithCategories(categories ...string) ArticleRequest {
 	if len(categories) == 0 {
 		return req
 	}
@@ -158,7 +159,7 @@ func (req articleRequest) WithCategories(categories ...string) articleRequest {
 // WithCategoriesExlucded adds category exclusion filters to the article request, maximum 5 categories.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed categories.
 //
 // You can use either the 'category' parameter to include specific categories or the 'excludecategory' parameter to exclude them, but not both simultaneously.
-func (req articleRequest) WithCategoriesExlucded(categories ...string) articleRequest {
+func (req ArticleRequest) WithCategoriesExlucded(categories ...string) ArticleRequest {
 	if len(categories) == 0 {
 		return req
 	}
@@ -189,7 +190,7 @@ func validateCountries(countries []string, logger *slog.Logger) []string {
 }
 
 // WithCountries adds country filters to the article request, maximum 5 countries.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed countries.
-func (req articleRequest) WithCountries(countries ...string) articleRequest {
+func (req ArticleRequest) WithCountries(countries ...string) ArticleRequest {
 	if len(countries) == 0 {
 		return req
 	}
@@ -217,7 +218,7 @@ func validateLanguages(languages []string, logger *slog.Logger) []string {
 }
 
 // WithLanguages adds language filters to the article request, maximum 5 languages.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed languages.
-func (req articleRequest) WithLanguages(languages ...string) articleRequest {
+func (req ArticleRequest) WithLanguages(languages ...string) ArticleRequest {
 	if len(languages) == 0 {
 		return req
 	}
@@ -227,7 +228,7 @@ func (req articleRequest) WithLanguages(languages ...string) articleRequest {
 }
 
 // WithDomains adds domain filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
-func (req articleRequest) WithDomains(domains ...string) articleRequest {
+func (req ArticleRequest) WithDomains(domains ...string) ArticleRequest {
 	if len(domains) == 0 {
 		return req
 	}
@@ -240,7 +241,7 @@ func (req articleRequest) WithDomains(domains ...string) articleRequest {
 }
 
 // WithDomainExcluded adds domain exclusion filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
-func (req articleRequest) WithDomainExcluded(domains ...string) articleRequest {
+func (req ArticleRequest) WithDomainExcluded(domains ...string) ArticleRequest {
 	if len(domains) == 0 {
 		return req
 	}
@@ -262,7 +263,7 @@ func validatePriorityDomain(priorityDomain string, logger *slog.Logger) bool {
 }
 
 // WithPriorityDomain sets a priority domain for the article request.
-func (req articleRequest) WithPriorityDomain(priorityDomain string) articleRequest {
+func (req ArticleRequest) WithPriorityDomain(priorityDomain string) ArticleRequest {
 	if priorityDomain == "" {
 		return req
 	}
@@ -275,7 +276,7 @@ func (req articleRequest) WithPriorityDomain(priorityDomain string) articleReque
 }
 
 // WithDomainUrls adds domain URL filters to the article request, maximum 5 domain URLs.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
-func (req articleRequest) WithDomainUrls(domainUrls ...string) articleRequest {
+func (req ArticleRequest) WithDomainUrls(domainUrls ...string) ArticleRequest {
 	if len(domainUrls) == 0 {
 		return req
 	}
@@ -284,7 +285,7 @@ func (req articleRequest) WithDomainUrls(domainUrls ...string) articleRequest {
 }
 
 // WithFieldsExcluded specifies fields to exclude from the response.
-func (req articleRequest) WithFieldsExcluded(fields ...string) articleRequest {
+func (req ArticleRequest) WithFieldsExcluded(fields ...string) ArticleRequest {
 	if len(fields) == 0 {
 		return req
 	}
@@ -293,7 +294,7 @@ func (req articleRequest) WithFieldsExcluded(fields ...string) articleRequest {
 }
 
 // WithTimezone Search the news articles for a specific timezone.  Please refer to [timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the list of allowed timezones.
-func (req articleRequest) WithTimezone(timezone string) articleRequest {
+func (req ArticleRequest) WithTimezone(timezone string) ArticleRequest {
 	if timezone == "" {
 		return req
 	}
@@ -302,55 +303,55 @@ func (req articleRequest) WithTimezone(timezone string) articleRequest {
 }
 
 // WithOnlyFullContent requests only articles with a full content.
-func (req articleRequest) WithOnlyFullContent() articleRequest {
+func (req ArticleRequest) WithOnlyFullContent() ArticleRequest {
 	req.params["full_content"] = "1"
 	return req
 }
 
 // WithNoFullContent requests only articles without a full content.
-func (req articleRequest) WithNoFullContent() articleRequest {
+func (req ArticleRequest) WithNoFullContent() ArticleRequest {
 	req.params["full_content"] = "0"
 	return req
 }
 
 // WithOnlyImage requests only articles with an image.
-func (req articleRequest) WithOnlyImage() articleRequest {
+func (req ArticleRequest) WithOnlyImage() ArticleRequest {
 	req.params["image"] = "1"
 	return req
 }
 
 // WithNoImage requests only articles without image.
-func (req articleRequest) WithNoImage() articleRequest {
+func (req ArticleRequest) WithNoImage() ArticleRequest {
 	req.params["image"] = "0"
 	return req
 }
 
 // WithOnlyVideo requests only articles with a video.
-func (req articleRequest) WithOnlyVideo() articleRequest {
+func (req ArticleRequest) WithOnlyVideo() ArticleRequest {
 	req.params["video"] = "1"
 	return req
 }
 
 // WithNoVideo requests only articles without video.
-func (req articleRequest) WithNoVideo() articleRequest {
+func (req ArticleRequest) WithNoVideo() ArticleRequest {
 	req.params["video"] = "0"
 	return req
 }
 
 // WithFromDate sets the start date for the article search.
-func (req articleRequest) WithFromDate(date time.Time) articleRequest {
+func (req ArticleRequest) WithFromDate(date time.Time) ArticleRequest {
 	req.params["from_date"] = date.Format("2006-01-02")
 	return req
 }
 
 // WithToDate sets the end date for the article search.
-func (req articleRequest) WithToDate(date time.Time) articleRequest {
+func (req ArticleRequest) WithToDate(date time.Time) ArticleRequest {
 	req.params["to_date"] = date.Format("2006-01-02")
 	return req
 }
 
 // WithTimeframe sets a time window for the article search.
-func (req articleRequest) WithTimeframe(hours int, minutes int) articleRequest {
+func (req ArticleRequest) WithTimeframe(hours int, minutes int) ArticleRequest {
 	if hours+minutes == 0 || hours < 0 || minutes < 0 {
 		return req
 	}
@@ -378,7 +379,7 @@ func (req articleRequest) WithTimeframe(hours int, minutes int) articleRequest {
 }
 
 // WithSentiment adds sentiment analysis filter to the article request.
-func (req articleRequest) WithSentiment(sentiment string) articleRequest {
+func (req ArticleRequest) WithSentiment(sentiment string) ArticleRequest {
 	if req.service == NewsArchive {
 		req.logger.Warn(fmt.Sprintf("newsdata: sentiment is not supported for %s", req.service.String()))
 		return req
@@ -408,7 +409,7 @@ func validateTags(tags []string, logger *slog.Logger) []string {
 }
 
 // WithTags adds tag filters to the article request, maximum 5 tags.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed tags.
-func (req articleRequest) WithTags(tags ...string) articleRequest {
+func (req ArticleRequest) WithTags(tags ...string) ArticleRequest {
 	if req.service == NewsArchive {
 		req.logger.Warn(fmt.Sprintf("newsdata: tags are not supported for %s", req.service.String()))
 		return req
@@ -422,7 +423,7 @@ func (req articleRequest) WithTags(tags ...string) articleRequest {
 }
 
 // WithRemoveDuplicates removes duplicate articles from the response.
-func (req articleRequest) WithRemoveDuplicates() articleRequest {
+func (req ArticleRequest) WithRemoveDuplicates() ArticleRequest {
 	if req.service == NewsArchive {
 		req.logger.Warn(fmt.Sprintf("newsdata: remove duplicates is not supported for %s", req.service.String()))
 		return req
@@ -432,7 +433,7 @@ func (req articleRequest) WithRemoveDuplicates() articleRequest {
 }
 
 // WithCoins adds cryptocurrency coin filters to the article request
-func (req articleRequest) WithCoins(coins ...string) articleRequest {
+func (req ArticleRequest) WithCoins(coins ...string) ArticleRequest {
 	if req.service != CryptoNews {
 		req.logger.Warn(fmt.Sprintf("newsdata: coins are not supported for %s", req.service.String()))
 		return req
@@ -449,7 +450,7 @@ func (req articleRequest) WithCoins(coins ...string) articleRequest {
 }
 
 // WithSize sets the number of articles to return per page.
-func (req articleRequest) WithSize(size int) articleRequest {
+func (req ArticleRequest) WithSize(size int) ArticleRequest {
 	if size < 1 || size > 50 {
 		req.logger.Error("newsdata: size must be between 1 and 50")
 		return req
@@ -459,7 +460,7 @@ func (req articleRequest) WithSize(size int) articleRequest {
 }
 
 // WithPage sets the page for paginated results.
-func (req articleRequest) WithPage(page string) articleRequest {
+func (req ArticleRequest) WithPage(page string) ArticleRequest {
 	if page == "" {
 		return req
 	}
@@ -467,15 +468,15 @@ func (req articleRequest) WithPage(page string) articleRequest {
 	return req
 }
 
-type sourceRequest struct {
+type SourceRequest struct {
 	context context.Context
 	params  map[string]string
 	logger  *slog.Logger
 }
 
 // NewSourceRequest creates a new request for news sources.
-func (c *NewsdataClient) NewSourceRequest() sourceRequest {
-	req := sourceRequest{
+func (c *NewsdataClient) NewSourceRequest() SourceRequest {
+	req := SourceRequest{
 		context: context.Background(),
 		params:  make(map[string]string),
 		logger:  c.logger,
@@ -484,13 +485,13 @@ func (c *NewsdataClient) NewSourceRequest() sourceRequest {
 }
 
 // WithContext sets the context for the source request.
-func (req sourceRequest) WithContext(ctx context.Context) sourceRequest {
+func (req SourceRequest) WithContext(ctx context.Context) SourceRequest {
 	req.context = ctx
 	return req
 }
 
 // WithCountries adds country filter to the source request.
-func (req sourceRequest) WithCountry(country string) sourceRequest {
+func (req SourceRequest) WithCountry(country string) SourceRequest {
 	if country == "" {
 		return req
 	}
@@ -505,7 +506,7 @@ func (req sourceRequest) WithCountry(country string) sourceRequest {
 }
 
 // WithCategory adds category filter to the source request
-func (req sourceRequest) WithCategory(category string) sourceRequest {
+func (req SourceRequest) WithCategory(category string) SourceRequest {
 	if category == "" {
 		return req
 	}
@@ -520,7 +521,7 @@ func (req sourceRequest) WithCategory(category string) sourceRequest {
 }
 
 // WithLanguage adds language filter to the source request
-func (req sourceRequest) WithLanguage(language string) sourceRequest {
+func (req SourceRequest) WithLanguage(language string) SourceRequest {
 	if language == "" {
 		return req
 	}
@@ -535,7 +536,7 @@ func (req sourceRequest) WithLanguage(language string) sourceRequest {
 }
 
 // WithPriorityDomain sets a priority domain for the source request
-func (req sourceRequest) WithPriorityDomain(priorityDomain string) sourceRequest {
+func (req SourceRequest) WithPriorityDomain(priorityDomain string) SourceRequest {
 	if priorityDomain == "" {
 		return req
 	}
@@ -547,7 +548,7 @@ func (req sourceRequest) WithPriorityDomain(priorityDomain string) sourceRequest
 }
 
 // WithDomainUrl sets a domain URL filter for the source request
-func (req sourceRequest) WithDomainUrl(domainUrl string) sourceRequest {
+func (req SourceRequest) WithDomainUrl(domainUrl string) SourceRequest {
 	if domainUrl == "" {
 		return req
 	}

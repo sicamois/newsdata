@@ -102,12 +102,12 @@ client.CustomizeLogging(os.Stdout, slog.LevelDebug)
 
 ### Articles
 
-- `GetArticles(req articleRequest, maxResults int) (*[]Article, error)`
-- `StreamArticles(req articleRequest, maxResults int) (<-chan Article, <-chan error)`
+- `GetArticles(req ArticleRequest, maxResults int) (*[]Article, error)`
+- `StreamArticles(req ArticleRequest, maxResults int) (<-chan Article, <-chan error)`
 
 ### Sources
 
-- `GetSources(req sourceRequest) (*[]Source, error)`
+- `GetSources(req SourceRequest) (*[]Source, error)`
 
 ## License
 

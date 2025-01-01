@@ -181,7 +181,7 @@ func (c *NewsdataClient) fetch(context context.Context, endpoint string, params 
 	return body, nil
 }
 
-func (c *NewsdataClient) fetchNews(req articleRequest) (*newsResponse, error) {
+func (c *NewsdataClient) fetchNews(req ArticleRequest) (*newsResponse, error) {
 	body, err := c.fetch(req.context, req.service.Endpoint(), req.params)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (c *NewsdataClient) fetchNews(req articleRequest) (*newsResponse, error) {
 }
 
 // StreamArticles streams news Articles from the API.
-func (c *NewsdataClient) StreamArticles(req articleRequest, maxResults int) (<-chan Article, <-chan error) {
+func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-chan Article, <-chan error) {
 	out := make(chan Article)
 	errChan := make(chan error)
 	go func() {
@@ -230,7 +230,7 @@ func (c *NewsdataClient) StreamArticles(req articleRequest, maxResults int) (<-c
 }
 
 // GetArticles fetches news Articles from the API.
-func (c *NewsdataClient) GetArticles(req articleRequest, maxResults int) (*[]Article, error) {
+func (c *NewsdataClient) GetArticles(req ArticleRequest, maxResults int) (*[]Article, error) {
 	articleChan, errChan := c.StreamArticles(req, maxResults)
 	articles := []Article{}
 	for {
@@ -276,7 +276,7 @@ type sourcesResponse struct {
 }
 
 // GetSources fetches news sources from the API.
-func (c *NewsdataClient) GetSources(req sourceRequest) (*[]Source, error) {
+func (c *NewsdataClient) GetSources(req SourceRequest) (*[]Source, error) {
 	sources := &[]Source{}
 
 	body, err := c.fetch(req.context, "/sources", req.params)
