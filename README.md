@@ -1,197 +1,115 @@
-# newsdata - Go Client for newsdata.io API
+# NewsData.io Go Client
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/sicamois/newsdata.svg)](https://pkg.go.dev/github.com/sicamois/newsdata)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sicamois/newsdata)](https://goreportcard.com/report/github.com/sicamois/newsdata)
+A Go client library for the [NewsData.io](https://newsdata.io) API that provides easy access to news articles and sources.
 
-A Go client library for accessing the [newsdata.io](https://newsdata.io) API.
+## Features
 
-## Key Features
-
-- Support for Latest News, Crypto News, Historical News and Sources endpoints
-- Automatic pagination handling
-- Async article processing with custom actions
-- Customizable logging
-- Request timeout configuration
-- Result limiting
-- Input validation
-- Full access to raw API parameters
+- Fetch news articles with customizable filters
+- Stream articles for efficient processing
+- Access news sources information
+- Configurable HTTP client timeout
+- Customizable logging with different log levels
+- Full support for NewsData.io API v1
 
 ## Installation
 
-```go
+```bash
 go get github.com/sicamois/newsdata
 ```
 
-## Requirement
+## Quick Start
 
-You need a [newsdata.io](https://newsdata.io) API key to use this library.
-
-→ To get an API key, you can [sign up for a free account](https://newsdata.io/register).
-
-## Usage
+You will need to sign-up for a free account on [NewsData.io](https://newsdata.io) to get an API key [here](https://newsdata.io/api/register).
 
 ```go
-// Create a new client
-client := newsdata.NewClient("your-api-key")
+package main
 
-// Get breaking news about climate change
-query := BreakingNewsQuery{
-    Query: "climate change",
-    Languages: []string{"en", "fr"},
-    Categories: []string{"environment", "science"},
-    Countries: []string{"us", "gb", "fr"},
-}
+import (
+    "context"
+    "fmt"
+    "github.com/sicamois/newsdata"
+)
 
-// Get the first 100 breaking news about climate change
-Articles, err := client.GetBreakingNews(query, 100)
-
-// Get US news sources
-Sources, err := client.GetSources(SourcesQuery{
-    Country: "us",
-})
-```
-
-## Advanced Usage: Process Articles with Action
-
-The library provides methods to process articles asynchronously using custom action functions. This is useful for handling large result sets or performing real-time processing:
-
-```go
 func main() {
+    // Create a new client with your API key
     client := newsdata.NewClient("your-api-key")
 
-    // Define a custom action to process articles
-    processArticles := func(articles *[]Article) error {
-        for _, article := range *articles {
-            // Process each article (e.g., save to database, analyze content)
-            fmt.Printf("Processing article: %s\n", article.Title)
-        }
-        return nil
-    }
+    // Create a request to fetch news articles
+    req := newsdata.NewArticleRequest("artificial intelligence").
+        WithKeywords("technology").
+        WithLanguage("en")
 
-    // Configure query
-    query := BreakingNewsQuery{
-        Query:     "artificial intelligence",
-        Languages: []string{"en"},
-        Categories: []string{"technology"},
-    }
-
-    // Process breaking news as they come in
-    err := client.ProcessBreakingNews(query, 100, processArticles)
+    // Get articles (limited to 10 results)
+    articles, err := client.GetArticles(req, 10)
     if err != nil {
-        log.Fatal(err)
+        panic(err)
     }
 
-    // Process historical news
-    historicalQuery := HistoricalNewsQuery{
-        Query: "artificial intelligence",
-        From:  DateTime{time.Now().AddDate(0, -1, 0)}, // Last month
-        To:    DateTime{time.Now()},
-    }
-
-    err = client.ProcessHistoricalNews(historicalQuery, 500, processArticles)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Process crypto news
-    cryptoQuery := CryptoNewsQuery{
-        Coins: []string{"BTC", "ETH"},
-        Tags:  []string{"mining", "regulation"},
-    }
-
-    err = client.ProcessCryptoNews(cryptoQuery, 200, processArticles)
-    if err != nil {
-        log.Fatal(err)
+    // Process the articles
+    for _, article := range *articles {
+        fmt.Printf("Title: %s\n", article.Title)
+        fmt.Printf("Link: %s\n", article.Link)
+        fmt.Printf("Published: %s\n\n", article.PubDate.Time)
     }
 }
 ```
 
-The Process methods execute the provided action function asynchronously (via go routines) for each batch of articles retrieved. This allows for efficient processing of large datasets and real-time handling of results.
+## Streaming Articles
 
-## Advanced Client Configuration
+For handling large result sets efficiently:
+
+```go
+articleChan, errChan := client.StreamArticles(req, 0) // 0 means no limit
+
+for {
+    select {
+    case article, ok := <-articleChan:
+        if !ok {
+            return // Channel closed, all articles processed
+        }
+        // Process each article
+        fmt.Printf("Title: %s\n", article.Title)
+    case err := <-errChan:
+        if err != nil {
+            panic(err)
+        }
+    }
+}
+```
+
+## Customization
 
 ### Setting Timeout
 
 ```go
-client := newsdata.NewClient("your-api-key", 0)
-client.SetTimeout(20 * time.Second)
+client.SetTimeout(10 * time.Second)
 ```
 
-### Debug Logging
+### Configuring Logging
 
 ```go
-client := newsdata.NewClient("your-api-key", 0)
-client.EnableDebug() // Enable debug logging
-// ... perform operations ...
-client.DisableDebug() // Disable debug logging
+// Enable debug logging
+client.EnableDebug()
+
+// Customize logging
+client.CustomizeLogging(os.Stdout, slog.LevelDebug)
 ```
 
-### Custom Logging
+## Available Methods
 
-The library uses Go `slog` package for logging. You can customize logging by specifying an output writer and log level:
+### Articles
 
-```go
-// Create or open a log file
-file, err := os.OpenFile("logs", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-defer file.Close()
+- `GetArticles(req articleRequest, maxResults int) (*[]Article, error)`
+- `StreamArticles(req articleRequest, maxResults int) (<-chan Article, <-chan error)`
 
-// Configure custom logging
-client.CustomizeLogging(file, slog.LevelInfo)
+### Sources
 
-// Get the logger for use in your application
-logger := client.Logger
-
-// Use the logger for your own logging needs
-logger.Info("Starting news search...")
-
-// The logger will also be used internally by the client
-Articles, err := client.GetBreakingNews(query)
-if err != nil {
-    logger.Error(err.Error())
-    return
-}
-
-logger.Info("Articles retrieved", "count", len(*Articles))
-```
-
-The client logger can be:
-
-- Customized with any `io.Writer` (file, stdout, network writer, etc.)
-- Set to different log levels: `slog.LevelDebug`, `slog.LevelInfo`, `slog.LevelWarn`, `slog.LevelError`
-- Retrieved for use in your application via `client.Logger()`
-
-## Complete Example
-
-```go
-func main() {
-    client := newsdata.NewClient("your-api-key")
-
-    // Configure client
-    client.SetTimeout(15 * time.Second)
-
-    // Perform an advanced search
-    query := BreakingNewsQuery{
-        Query:     "artificial intelligence",
-        Languages:  []string{"en"},
-        Categories: []string{"technology"},
-        Timeframe:  "24",
-    }
-
-    Articles, err := client.GetBreakingNews(query, 100)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Process results
-    for _, Article := range *Articles {
-        fmt.Printf("Title: %s\nSource: %s\nPublished: %s\n\n",
-            Article.Title,
-            Article.SourceName,
-            Article.PubDate)
-    }
-}
-```
+- `GetSources(req sourceRequest) (*[]Source, error)`
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

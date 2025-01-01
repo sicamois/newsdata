@@ -30,23 +30,20 @@ func APIKey(t *testing.T) string {
 	return apiKey
 }
 
-func TestGetBreakingNews(t *testing.T) {
+func TestGetArticles(t *testing.T) {
 	client := NewClient(APIKey(t))
-	query := BreakingNewsQuery{
-		Query:     "artificial intelligence",
-		Languages: []string{"en"},
-		Categories: []string{
-			"technology",
-		},
-		ExcludeFields:    []string{"Title"},
-		RemoveDuplicates: "1",
-	}
-	Articles, err := client.GetBreakingNews(query, 1)
+	req := client.NewArticleRequest(LatestNews, "artificial intelligence").
+		WithLanguages("en").
+		WithCategories("technology").
+		WithFieldsExcluded("Title").
+		WithRemoveDuplicates()
+
+	Articles, err := client.GetArticles(req, 88)
 	if err != nil {
 		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
-	if len(*Articles) == 0 || len(*Articles) > 1 {
-		t.Fatalf("Invalid number of Articles: %d - should 1", len(*Articles))
+	if len(*Articles) == 0 || len(*Articles) != 88 {
+		t.Fatalf("Invalid number of Articles: %d - should 88", len(*Articles))
 	}
 	for _, Article := range *Articles {
 		if Article.Title != "" {
@@ -55,14 +52,12 @@ func TestGetBreakingNews(t *testing.T) {
 	}
 }
 
-func TestGetHistoricalNews(t *testing.T) {
+func TestGetArticlesFromArchive(t *testing.T) {
 	client := NewClient(APIKey(t))
-	query := HistoricalNewsQuery{
-		Query: "artificial intelligence",
-		From:  DateTime{Time: time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC)},
-		To:    DateTime{Time: time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC)},
-	}
-	Articles, err := client.GetHistoricalNews(query, 100)
+	req := client.NewArticleRequest(NewsArchive, "artificial intelligence").
+		WithFromDate(time.Date(2024, 12, 01, 0, 0, 0, 0, time.UTC)).
+		WithToDate(time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC))
+	Articles, err := client.GetArticles(req, 100)
 	if err != nil {
 		t.Fatalf("Error fetching History News: %v", err)
 	}
@@ -73,10 +68,10 @@ func TestGetHistoricalNews(t *testing.T) {
 
 func TestGetSources(t *testing.T) {
 	client := NewClient(APIKey(t))
-	options := SourcesQuery{
-		Country: "us",
-	}
-	sources, err := client.GetSources(options)
+	req := client.NewSourceRequest().
+		WithCategory("technology").
+		WithLanguage("fr")
+	sources, err := client.GetSources(req)
 	if err != nil {
 		t.Fatalf("Error fetching Sources: %v", err)
 	}
