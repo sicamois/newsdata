@@ -107,7 +107,7 @@ func isValidTimeframe(timeframe string) bool {
 }
 
 // validate is a generic validator for query structs.
-func validate[T *BreakingNewsQuery | *CryptoNewsQuery | *HistoricalNewsQuery | *SourcesQuery](query T) error {
+func validate[T *BreakingNewsRequest | *CryptoNewsRequest | *HistoricalNewsRequest | *SourcesRequest](query T) error {
 	// dereference pointer with Elem() if needed
 	v := reflect.ValueOf(query).Elem()
 	if v.Kind() != reflect.Struct {

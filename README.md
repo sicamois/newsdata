@@ -36,7 +36,7 @@ You need a [newsdata.io](https://newsdata.io) API key to use this library.
 client := newsdata.NewClient("your-api-key")
 
 // Get breaking news about climate change
-query := BreakingNewsQuery{
+query := BreakingNewsRequest{
     Query: "climate change",
     Languages: []string{"en", "fr"},
     Categories: []string{"environment", "science"},
@@ -47,12 +47,12 @@ query := BreakingNewsQuery{
 Articles, err := client.GetBreakingNews(query, 100)
 
 // Get US news sources
-Sources, err := client.GetSources(SourcesQuery{
+Sources, err := client.GetSources(SourcesRequest{
     Country: "us",
 })
 
 // Get crypto news about Bitcoin
-cryptoQuery := CryptoNewsQuery{
+cryptoQuery := CryptoNewsRequest{
     Query: "Bitcoin",
     Languages: []string{"en"},
     Timeframe: "24",
@@ -61,7 +61,7 @@ cryptoQuery := CryptoNewsQuery{
 CryptoArticles, err := client.GetCryptoNews(cryptoQuery, 50)
 
 // Search news archive
-historicalQuery := HistoricalNewsQuery{
+historicalQuery := HistoricalNewsRequest{
     Query: "Olympics",
     Languages: []string{"en"},
     From: "2021-07-23",
@@ -80,13 +80,13 @@ The library provides efficient asynchronous processing capabilities through its 
 client := newsdata.NewClient("your-api-key")
 
 // Configure query
-query := BreakingNewsQuery{
+query := BreakingNewsRequest{
     Query:     "artificial intelligence",
     Languages: []string{"en"},
 }
 
 // Get channels for articles and errors
-articleChan, errChan := client.PipeBreakingNews(query, 100)
+articleChan, errChan := client.StreamBreakingNews(query, 100)
 
 // Process articles asynchronously
 for {
@@ -108,9 +108,9 @@ for {
 
 Similar pipe functions are available for other endpoints:
 
-- `PipeBreakingNews`: Process latest news articles asynchronously
-- `PipeHistoricalNews`: Process historical news articles asynchronously
-- `PipeCryptoNews`: Process cryptocurrency news articles asynchronously
+- `StreamBreakingNews`: Process latest news articles asynchronously
+- `StreamHistoricalNews`: Process historical news articles asynchronously
+- `StreamCryptoNews`: Process cryptocurrency news articles asynchronously
 
 These functions are particularly useful when:
 
@@ -181,7 +181,7 @@ func main() {
     client.SetTimeout(15 * time.Second)
 
     // Perform an advanced search
-    query := BreakingNewsQuery{
+    query := BreakingNewsRequest{
         Query:     "artificial intelligence",
         Languages:  []string{"en"},
         Categories: []string{"technology"},
