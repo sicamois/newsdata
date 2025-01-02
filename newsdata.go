@@ -215,11 +215,10 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 			if maxResults == 0 {
 				maxResults = res.TotalResults
 			}
-			for _, article := range res.Articles {
+			articles := res.Articles
+			for i := 0; i < len(articles); i++ {
 				if index < maxResults {
-					// Create a new variable each time to avoid pointer issues
-					currentArticle := article
-					out <- &currentArticle
+					out <- &articles[i]
 					index++
 				} else {
 					return
@@ -298,11 +297,10 @@ func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
 	if err := json.Unmarshal(body, &res); err != nil { // Parse []byte to go struct pointer
 		return nil, err
 	}
-	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
-	for _, source := range res.Sources {
-		// Create a new variable each time to avoid pointer issues
-		currentSource := source
-		sources = append(sources, &currentSource)
+	resSources := res.Sources
+	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(resSources))
+	for i := 0; i < len(resSources); i++ {
+		sources = append(sources, &resSources[i])
 	}
 
 	return sources, nil
