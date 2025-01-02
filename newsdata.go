@@ -217,7 +217,9 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 			}
 			for _, article := range res.Articles {
 				if index < maxResults {
-					out <- &article
+					// Create a new variable each time to avoid pointer issues
+					currentArticle := article
+					out <- &currentArticle
 					index++
 				} else {
 					return
@@ -298,7 +300,9 @@ func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
 	}
 	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
 	for _, source := range res.Sources {
-		sources = append(sources, &source)
+		// Create a new variable each time to avoid pointer issues
+		currentSource := source
+		sources = append(sources, &currentSource)
 	}
 
 	return sources, nil
