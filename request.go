@@ -67,6 +67,9 @@ func (c *NewsdataClient) NewArticleRequest(service NewsService, query string) Ar
 		req.logger.Warn("newsdata: query length is greater than 512, truncating to 512")
 		query = query[:512]
 	}
+	if query == "" {
+		return req
+	}
 	req.params["q"] = query
 	return req
 }
