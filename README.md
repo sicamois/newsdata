@@ -13,6 +13,9 @@ A Go client library for the [NewsData.io](https://newsdata.io) API that provides
 - Configurable HTTP client timeout
 - Customizable logging with different log levels
 - Full support for NewsData.io API v1
+- Sentiment analysis support
+- AI-powered tags and regions
+- Cryptocurrency tags support
 
 ## Installation
 
@@ -49,10 +52,14 @@ func main() {
     }
 
     // Process the articles
-    for _, article := range *articles {
+    for _, article := range articles {
         fmt.Printf("Title: %s\n", article.Title)
         fmt.Printf("Link: %s\n", article.Link)
-        fmt.Printf("Published: %s\n\n", article.PubDate.Time)
+        fmt.Printf("Published: %s\n", article.PubDate.Time)
+        if article.Sentiment != "" {
+            fmt.Printf("Sentiment: %s\n", article.Sentiment)
+        }
+        fmt.Println()
     }
 }
 ```
@@ -98,16 +105,31 @@ client.EnableDebug()
 client.CustomizeLogging(os.Stdout, slog.LevelDebug)
 ```
 
+## Article Features
+
+Articles include rich metadata:
+
+- Title, description, and content
+- Publication date with timezone
+- Source information (name, URL, priority)
+- Media URLs (images, videos)
+- Categories and keywords
+- Language and countries
+- AI-powered tags and regions
+- Sentiment analysis with detailed statistics
+- Cryptocurrency-specific tags
+- Duplicate detection
+
 ## Available Methods
 
 ### Articles
 
-- `GetArticles(req ArticleRequest, maxResults int) (*[]Article, error)`
-- `StreamArticles(req ArticleRequest, maxResults int) (<-chan Article, <-chan error)`
+- `GetArticles(req ArticleRequest, maxResults int) ([]*Article, error)`
+- `StreamArticles(req ArticleRequest, maxResults int) (<-chan *Article, <-chan error)`
 
 ### Sources
 
-- `GetSources(req SourceRequest) (*[]Source, error)`
+- `GetSources(req SourceRequest) ([]*Source, error)`
 
 ## License
 

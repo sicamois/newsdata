@@ -42,10 +42,10 @@ func TestGetArticles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error fetching Breaking News: %v", err)
 	}
-	if len(*Articles) == 0 || len(*Articles) != 88 {
-		t.Fatalf("Invalid number of Articles: %d - should 88", len(*Articles))
+	if len(Articles) == 0 || len(Articles) != 88 {
+		t.Fatalf("Invalid number of Articles: %d - should 88", len(Articles))
 	}
-	for _, Article := range *Articles {
+	for _, Article := range Articles {
 		if Article.Title != "" {
 			t.Fatalf("Article title field is not exluded")
 		}
@@ -61,8 +61,8 @@ func TestGetArticlesFromArchive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error fetching History News: %v", err)
 	}
-	if len(*Articles) == 0 || len(*Articles) != 100 {
-		t.Fatalf("Invalid number of Articles: %d - should 100", len(*Articles))
+	if len(Articles) == 0 || len(Articles) != 100 {
+		t.Fatalf("Invalid number of Articles: %d - should 100", len(Articles))
 	}
 }
 
@@ -75,7 +75,7 @@ func TestGetSources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error fetching Sources: %v", err)
 	}
-	if len(*sources) == 0 {
+	if len(sources) == 0 {
 		t.Fatalf("No sources found")
 	}
 }

@@ -182,7 +182,7 @@ func (c *NewsdataClient) fetch(context context.Context, endpoint string, params 
 }
 
 func (c *NewsdataClient) fetchNews(req ArticleRequest) (*newsResponse, error) {
-	body, err := c.fetch(req.context, req.service.Endpoint(), req.params)
+	body, err := c.fetch(req.context, req.service.endpoint(), req.params)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +195,8 @@ func (c *NewsdataClient) fetchNews(req ArticleRequest) (*newsResponse, error) {
 }
 
 // StreamArticles streams news Articles from the API.
-func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-chan Article, <-chan error) {
-	out := make(chan Article)
+func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-chan *Article, <-chan error) {
+	out := make(chan *Article)
 	errChan := make(chan error)
 	go func() {
 		defer close(out)
@@ -217,7 +217,7 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 			}
 			for _, article := range res.Articles {
 				if index < maxResults {
-					out <- article
+					out <- &article
 					index++
 				} else {
 					return
@@ -230,18 +230,26 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 }
 
 // GetArticles fetches news Articles from the API.
-func (c *NewsdataClient) GetArticles(req ArticleRequest, maxResults int) (*[]Article, error) {
+func (c *NewsdataClient) GetArticles(req ArticleRequest, maxResults int) ([]*Article, error) {
 	articleChan, errChan := c.StreamArticles(req, maxResults)
-	articles := []Article{}
+	var articles []*Article
+	if maxResults > 0 {
+		articles = make([]*Article, 0, maxResults)
+	} else {
+		articles = make([]*Article, 0)
+	}
+	resultCount := 0
 	for {
 		select {
 		case article, ok := <-articleChan:
 			if !ok {
 				// Channel is closed, all articles have been processed
-				return &articles, nil
+				articles = articles[:resultCount]
+				return articles, nil
 			}
 			// Process each article
 			articles = append(articles, article)
+			resultCount++
 		case err := <-errChan:
 			if err != nil {
 				return nil, err
@@ -276,9 +284,8 @@ type sourcesResponse struct {
 }
 
 // GetSources fetches news sources from the API.
-func (c *NewsdataClient) GetSources(req SourceRequest) (*[]Source, error) {
-	sources := &[]Source{}
-
+func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
+	sources := make([]*Source, 0)
 	body, err := c.fetch(req.context, "/sources", req.params)
 	if err != nil {
 		return nil, err
@@ -289,11 +296,10 @@ func (c *NewsdataClient) GetSources(req SourceRequest) (*[]Source, error) {
 	if err := json.Unmarshal(body, &res); err != nil { // Parse []byte to go struct pointer
 		return nil, err
 	}
-
 	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(res.Sources))
-
-	// Append results to the aggregate slice.
-	*sources = append(*sources, res.Sources...)
+	for _, source := range res.Sources {
+		sources = append(sources, &source)
+	}
 
 	return sources, nil
 }

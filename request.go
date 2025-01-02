@@ -9,16 +9,18 @@ import (
 	"time"
 )
 
-type newsService int
+// NewsService represents the type of news service to use.
+type NewsService int
 
+// NewsService represents the type of news service to use.
 const (
-	LatestNews newsService = iota
+	LatestNews NewsService = iota
 	CryptoNews
 	NewsArchive
 )
 
 // String returns the human-readable name of the news service
-func (service newsService) String() string {
+func (service NewsService) String() string {
 	switch service {
 	case LatestNews:
 		return "Latest News"
@@ -30,8 +32,8 @@ func (service newsService) String() string {
 	return ""
 }
 
-// Endpoint returns the API endpoint path for the news service
-func (service newsService) Endpoint() string {
+// endpoint returns the API endpoint path for the news service
+func (service NewsService) endpoint() string {
 	switch service {
 	case LatestNews:
 		return "/latest"
@@ -45,14 +47,16 @@ func (service newsService) Endpoint() string {
 
 // ArticleRequest represents a request for news articles.
 type ArticleRequest struct {
-	service newsService
+	service NewsService
 	context context.Context
 	params  map[string]string
 	logger  *slog.Logger
 }
 
 // NewArticleRequest creates a new article request with the specified service and query.
-func (c *NewsdataClient) NewArticleRequest(service newsService, query string) ArticleRequest {
+//
+// The query is used to search for articles in the specified service. Service can be LatestNews, CryptoNews or NewsArchive.
+func (c *NewsdataClient) NewArticleRequest(service NewsService, query string) ArticleRequest {
 	req := ArticleRequest{
 		service: service,
 		context: context.Background(),
@@ -68,7 +72,9 @@ func (c *NewsdataClient) NewArticleRequest(service newsService, query string) Ar
 }
 
 // NewArticleRequestById creates a new article request to fetch articles by their IDs.
-func (c *NewsdataClient) NewArticleRequestById(service newsService, ids ...string) ArticleRequest {
+//
+// Service can be LatestNews, CryptoNews or NewsArchive.
+func (c *NewsdataClient) NewArticleRequestById(service NewsService, ids ...string) ArticleRequest {
 	req := ArticleRequest{
 		service: service,
 		context: context.Background(),
