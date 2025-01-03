@@ -504,8 +504,8 @@ func (req SourceRequest) WithCountry(country string) SourceRequest {
 	if country == "" {
 		return req
 	}
-	for _, country := range allowedCountries {
-		if country == country {
+	for _, cnt := range allowedCountries {
+		if cnt == country {
 			req.params["country"] = country
 			return req
 		}
@@ -519,8 +519,8 @@ func (req SourceRequest) WithCategory(category string) SourceRequest {
 	if category == "" {
 		return req
 	}
-	for _, category := range allowedCategories {
-		if category == category {
+	for _, ctg := range allowedCategories {
+		if ctg == category {
 			req.params["category"] = category
 			return req
 		}
@@ -534,8 +534,8 @@ func (req SourceRequest) WithLanguage(language string) SourceRequest {
 	if language == "" {
 		return req
 	}
-	for _, language := range allowedLanguages {
-		if language == language {
+	for _, lang := range allowedLanguages {
+		if lang == language {
 			req.params["language"] = language
 			return req
 		}
