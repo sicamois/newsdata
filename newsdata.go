@@ -218,7 +218,7 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 				errChan <- fmt.Errorf("newsdata: streamArticles - error fetching news - error: %w", err)
 				return
 			}
-			if maxResults == 0 {
+			if maxResults == 0 || res.TotalResults < maxResults {
 				maxResults = res.TotalResults
 			}
 			articles := res.Articles
