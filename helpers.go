@@ -16,7 +16,7 @@ func (t *DateTime) UnmarshalJSON(b []byte) error {
 	}
 	date, err := time.Parse(time.DateTime, strings.Trim(string(b), `"`))
 	if err != nil {
-		return err
+		return fmt.Errorf("unmarshalDateTime - error unmarshalling date time - error: %w", err)
 	}
 	t.Time = date
 	return nil
@@ -47,7 +47,7 @@ func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 
 	stats := make(map[string]float64)
 	if err := json.Unmarshal(b, &stats); err != nil {
-		return err
+		return fmt.Errorf("unmarshalSentimentStats - error unmarshalling sentiment stats - error: %w", err)
 	}
 	positive, ok := stats["positive"]
 	if !ok {

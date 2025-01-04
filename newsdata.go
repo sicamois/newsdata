@@ -137,10 +137,13 @@ type errorResponse struct {
 
 // fetch sends an HTTP request and decodes the response.
 func (c *NewsdataClient) fetch(context context.Context, endpoint string, params map[string]string) ([]byte, error) {
+	start := time.Now()
+	var duration time.Duration
+
 	// Construct the full URL with query parameters.
 	reqURL, err := url.Parse(c.baseURL + endpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch - error parsing URL - baseURL: %s, endpoint: %s, error: %w", c.baseURL, endpoint, err)
 	}
 
 	// Convert struct-based query parameters to URL query parameters.
@@ -151,31 +154,34 @@ func (c *NewsdataClient) fetch(context context.Context, endpoint string, params 
 	reqURL.RawQuery = query.Encode()
 
 	// Create and execute the HTTP request.
-	c.logger.Debug("Request", "url", reqURL.String())
+	c.logger.Debug("newsdata: fetch - request", "url", reqURL.String())
+	defer func() {
+		duration = time.Since(start)
+		c.logger.Debug("newsdata: fetch - response", "url", reqURL.String(), "duration", duration)
+	}()
 	req, err := http.NewRequest("GET", reqURL.String(), nil)
 	req = req.WithContext(context)
 	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+		return nil, fmt.Errorf("fetch - error creating request - url: %s, error: %w", reqURL.String(), err)
 	}
 	req.Header.Set("X-ACCESS-KEY", c.apiKey)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+		return nil, fmt.Errorf("fetch - error executing request - url: %s, error: %w", reqURL.String(), err)
 	}
 	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+		return nil, fmt.Errorf("fetch - error reading response body - url: %s, error: %w", reqURL.String(), err)
 	}
 
 	// Handle non-200 status codes.
 	if resp.StatusCode != http.StatusOK {
 		var errorData errorResponse
 		if err := json.Unmarshal(body, &errorData); err != nil {
-			return nil, fmt.Errorf("%s - url: %s", err.Error(), reqURL.String())
+			return nil, fmt.Errorf("fetch - error unmarshalling error response - url: %s, error: %w", reqURL.String(), err)
 		}
-		slog.Error("Error reading response body", "error", errors.New(errorData.Error.Message), "url", reqURL.String())
-		return nil, fmt.Errorf("%s - url: %s", errorData.Error.Message, reqURL.String())
+		return nil, fmt.Errorf("fetch - error reading response body - url: %s, error: %w", reqURL.String(), errors.New(errorData.Error.Message))
 	}
 
 	return body, nil
@@ -184,12 +190,12 @@ func (c *NewsdataClient) fetch(context context.Context, endpoint string, params 
 func (c *NewsdataClient) fetchNews(req ArticleRequest) (*newsResponse, error) {
 	body, err := c.fetch(req.context, req.service.endpoint(), req.params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetchNews - error fetching news - error: %w", err)
 	}
 	// Decode the JSON response.
 	var data newsResponse
 	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetchNews - error unmarshalling news response - error: %w", err)
 	}
 	return &data, nil
 }
@@ -202,14 +208,14 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 		defer close(out)
 		defer close(errChan)
 		page := ""
-		index := 0
+		articlesCount := 0
 		for {
 			if page != "" {
 				req.params["page"] = page
 			}
 			res, err := c.fetchNews(req)
 			if err != nil {
-				errChan <- err
+				errChan <- fmt.Errorf("newsdata: streamArticles - error fetching news - error: %w", err)
 				return
 			}
 			if maxResults == 0 {
@@ -217,9 +223,9 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 			}
 			articles := res.Articles
 			for i := 0; i < len(articles); i++ {
-				if index < maxResults {
+				if articlesCount < maxResults {
 					out <- &articles[i]
-					index++
+					articlesCount++
 				} else {
 					return
 				}
@@ -239,21 +245,21 @@ func (c *NewsdataClient) GetArticles(req ArticleRequest, maxResults int) ([]*Art
 	} else {
 		articles = make([]*Article, 0)
 	}
-	resultCount := 0
+	articlesCount := 0
 	for {
 		select {
 		case article, ok := <-articleChan:
 			if !ok {
 				// Channel is closed, all articles have been processed
-				articles = articles[:resultCount]
+				articles = articles[:articlesCount]
 				return articles, nil
 			}
 			// Process each article
 			articles = append(articles, article)
-			resultCount++
+			articlesCount++
 		case err := <-errChan:
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("newsdata: getArticles - error fetching articles - error: %w", err)
 			}
 		}
 	}
@@ -286,19 +292,18 @@ type sourcesResponse struct {
 
 // GetSources fetches news sources from the API.
 func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
-	sources := make([]*Source, 0)
+	sources := make([]*Source, 100)
 	body, err := c.fetch(req.context, "/sources", req.params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("newsdata: getSources - error fetching sources - error: %w", err)
 	}
 
 	// Decode the JSON response.
 	var res sourcesResponse
 	if err := json.Unmarshal(body, &res); err != nil { // Parse []byte to go struct pointer
-		return nil, err
+		return nil, fmt.Errorf("newsdata: getSources - error unmarshalling sources response - error: %w", err)
 	}
 	resSources := res.Sources
-	c.logger.Debug("Response", "status", res.Status, "totalResults", res.TotalResults, "#sources", len(resSources))
 	for i := 0; i < len(resSources); i++ {
 		sources = append(sources, &resSources[i])
 	}
