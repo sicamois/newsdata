@@ -205,10 +205,15 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 	out := make(chan *Article)
 	errChan := make(chan error)
 	go func() {
+		start := time.Now()
 		defer close(out)
 		defer close(errChan)
 		page := ""
 		articlesCount := 0
+		defer func() {
+			// Closure are evaluated when the function is executed, not when defer is defined. Hence, articlesCount will have the correct value.
+			c.logger.Debug("newsdata: streamArticles - done", "service", req.service, "params", req.params, "articlesCount", articlesCount, "duration", time.Since(start))
+		}()
 		for {
 			if page != "" {
 				req.params["page"] = page
@@ -292,7 +297,12 @@ type sourcesResponse struct {
 
 // GetSources fetches news sources from the API.
 func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
+	start := time.Now()
 	sources := make([]*Source, 100)
+	defer func() {
+		// Closure are evaluated when the function is executed, not when defer is defined. Hence, sources will have the correct length.
+		c.logger.Debug("newsdata: getSources - done", "params", req.params, "sources", len(sources), "duration", time.Since(start))
+	}()
 	body, err := c.fetch(req.context, "/sources", req.params)
 	if err != nil {
 		return nil, fmt.Errorf("newsdata: getSources - error fetching sources - error: %w", err)
