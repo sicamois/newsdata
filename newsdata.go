@@ -208,16 +208,12 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 		start := time.Now()
 		defer close(out)
 		defer close(errChan)
-		page := ""
 		articlesCount := 0
 		defer func() {
 			// Closure are evaluated when the function is executed, not when defer is defined. Hence, articlesCount will have the correct value.
 			c.logger.Debug("newsdata: streamArticles - done", "service", req.service, "params", req.params, "articlesCount", articlesCount, "duration", time.Since(start))
 		}()
 		for {
-			if page != "" {
-				req.params["page"] = page
-			}
 			res, err := c.fetchNews(req)
 			if err != nil {
 				errChan <- fmt.Errorf("newsdata: streamArticles - error fetching news - error: %w", err)
@@ -238,7 +234,11 @@ func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-c
 					return
 				}
 			}
-			page = res.NextPage
+			if res.NextPage != "" {
+				req.params["page"] = res.NextPage
+			} else {
+				return
+			}
 		}
 	}()
 	return out, errChan
