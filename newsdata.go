@@ -298,7 +298,7 @@ type sourcesResponse struct {
 // GetSources fetches news sources from the API.
 func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
 	start := time.Now()
-	sources := make([]*Source, 100)
+	sources := make([]*Source, 0, 200)
 	defer func() {
 		// Closure are evaluated when the function is executed, not when defer is defined. Hence, sources will have the correct length.
 		c.logger.Debug("newsdata: getSources - done", "params", req.params, "sources", len(sources), "duration", time.Since(start))
