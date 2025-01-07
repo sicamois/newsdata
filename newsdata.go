@@ -14,116 +14,106 @@ import (
 )
 
 // NewsdataClient is the base client to access NewsData API.
-// It provides methods to fetch news data.
-//
-// It handles the HTTP client and the logger configurations.
+// It provides methods to fetch news data and manage API interactions.
+// The client handles HTTP requests, authentication, and logging configurations.
 type NewsdataClient struct {
-	apiKey     string
-	baseURL    string
-	httpClient *http.Client
-	logger     *slog.Logger
+	apiKey      string
+	baseURL     string
+	httpClient  *http.Client
+	logger      *slog.Logger
+	LatestNews  *NewsService
+	NewsArchive *NewsService
+	CryptoNews  *NewsService
+	Sources     *SourcesService
 }
 
-// newClient creates a new  NewsdataClient with default settings.
-//
-// Timeout is set to 5 seconds by default.
-func NewClient(apiKey string) *NewsdataClient {
-	return &NewsdataClient{
-		// newsdata.io API key
-		apiKey: apiKey,
-		// newsdata.io API base URL
-		baseURL: "https://newsdata.io/api/1",
-		// HTTP client is a *http.Client that can be customized
-		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
-		// logger is a *slog.logger that can be customized
-		logger: newCustomLogger(os.Stdout, slog.LevelInfo),
+type clientOptions struct {
+	apiKey             string
+	customLoggerWriter io.Writer
+	loggerLevel        slog.Level
+	timeout            time.Duration
+}
+
+// ClientOption is a functional option for configuring the NewsdataClient.
+type ClientOption func(*clientOptions)
+
+// WithAPIKey sets the API key for the client.
+// If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
+// environment variable. It will panic if no API key is available.
+func WithAPIKey(apiKey string) ClientOption {
+	return func(o *clientOptions) {
+		o.apiKey = apiKey
 	}
 }
 
-// SetTimeout sets the HTTP client timeout.
-func (c *NewsdataClient) SetTimeout(timeout time.Duration) {
-	c.httpClient.Timeout = timeout
+// WithCustomLoggerWriter sets a custom logger writer for the client.
+// If no custom logger writer is provided, the client will use the default logger.
+func WithCustomLoggerWriter(w io.Writer) ClientOption {
+	return func(o *clientOptions) {
+		o.customLoggerWriter = w
+	}
 }
 
-// CustomizeLogging customizes the logger used by the client.
-func (c *NewsdataClient) CustomizeLogging(w io.Writer, level slog.Level) {
-	customlogger := newCustomLogger(w, level)
-	c.logger = customlogger
+// WithTimeout sets the timeout for the client.
+// If no timeout is provided, the client will use a default timeout of 5 seconds.
+func WithTimeout(timeout time.Duration) ClientOption {
+	return func(o *clientOptions) {
+		o.timeout = timeout
+	}
 }
 
-// EnableDebug enables debug logging.
-func (c *NewsdataClient) EnableDebug() {
-	w := c.logger.Handler().(*levelHandler).writer
-	c.logger = newCustomLogger(w, slog.LevelDebug)
+// WithLogLevel sets the log level for the client.
+// If no log level is provided, the client will use a default log level of slog.LevelInfo.
+func WithLogLevel(level slog.Level) ClientOption {
+	return func(o *clientOptions) {
+		o.loggerLevel = level
+	}
 }
 
-// DisableDebug disables debug logging.
-func (c *NewsdataClient) DisableDebug() {
-	w := c.logger.Handler().(*levelHandler).writer
-	c.logger = newCustomLogger(w, slog.LevelInfo)
+// NewClient creates a new NewsData API client with the provided options.
+// If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
+// environment variable. It will panic if no API key is available.
+func NewClient(opts ...ClientOption) *NewsdataClient {
+	options := &clientOptions{
+		timeout:     5 * time.Second,
+		loggerLevel: slog.LevelInfo,
+	}
+	for _, opt := range opts {
+		opt(options)
+	}
+	if options.apiKey == "" {
+		options.apiKey = os.Getenv("NEWSDATA_API_KEY")
+		if options.apiKey == "" {
+			panic("NEWSDATA_API_KEY is not set")
+		}
+	}
+
+	client := &NewsdataClient{
+		// newsdata.io API base URL
+		baseURL: "https://newsdata.io/api/1",
+		// newsdata.io API key
+		apiKey: options.apiKey,
+		// HTTP client is a *http.Client that can be customized
+		httpClient: &http.Client{
+			Timeout: options.timeout,
+		},
+	}
+	if options.customLoggerWriter != nil {
+		client.logger = newCustomLogger(options.customLoggerWriter, options.loggerLevel)
+	} else {
+		slog.SetLogLoggerLevel(options.loggerLevel)
+		client.logger = slog.Default()
+	}
+	client.LatestNews = client.newLatestNewsService()
+	client.NewsArchive = client.newNewsArchiveService()
+	client.CryptoNews = client.newCryptoNewsService()
+	client.Sources = client.newSourcesService()
+	return client
 }
 
-// Logger() returns the logger
+// Logger returns the client's configured logger instance.
 func (c *NewsdataClient) Logger() *slog.Logger {
 	return c.logger
-}
-
-// DateTime is a wrapper around time.Time, used to format date as defined by the API
-type DateTime struct {
-	time.Time
-}
-
-// SentimentStats represents the sentiment stats for a news Article.
-type SentimentStats struct {
-	Positive float64 `json:"positive"`
-	Neutral  float64 `json:"neutral"`
-	Negative float64 `json:"negative"`
-}
-
-// Tags is is a wrapper around []string for coin-specific tags, AI tags & AI Regions, used to handle the case where the API returns a restriction message (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS")
-type Tags []string
-
-// Article represents a news Article.
-//
-// See https://newsdata.io/documentation/#http_response
-type Article struct {
-	Id             string         `json:"Article_id"`
-	Title          string         `json:"title"`
-	Link           string         `json:"link"`
-	Keywords       []string       `json:"keywords"`
-	Creator        []string       `json:"creator"`
-	VideoURL       string         `json:"video_url"`
-	Description    string         `json:"description"`
-	Content        string         `json:"content"`
-	PubDate        DateTime       `json:"pubDate"`
-	PubDateTZ      string         `json:"pubDateTZ"`
-	ImageURL       string         `json:"image_url"`
-	SourceId       string         `json:"source_id"`
-	SourcePriority int            `json:"source_priority"`
-	SourceName     string         `json:"source_name"`
-	SourceURL      string         `json:"source_url"`
-	SourceIconURL  string         `json:"source_icon"`
-	Language       string         `json:"language"`
-	Countries      []string       `json:"country"`
-	Categories     []string       `json:"category"`
-	AiTags         Tags           `json:"ai_tag"`
-	Sentiment      string         `json:"sentiment"`
-	SentimentStats SentimentStats `json:"sentiment_stats"`
-	AiRegions      Tags           `json:"ai_region"`
-	Coin           []string       `json:"coin"`
-	Duplicate      bool           `json:"duplicate"`
-}
-
-// newsResponse represents the news API response.
-//
-// See https://newsdata.io/documentation/#http_response
-type newsResponse struct {
-	Status       string    `json:"status"`       // Response status ("success" or error message)
-	TotalResults int       `json:"totalResults"` // Total number of Articles matching the query
-	Articles     []Article `json:"results"`      // Array of Articles
-	NextPage     string    `json:"nextPage"`     // Next page token
 }
 
 // errorResponse represents the API response when an error happened.
@@ -135,15 +125,12 @@ type errorResponse struct {
 	} `json:"results"`
 }
 
-// fetch sends an HTTP request and decodes the response.
-func (c *NewsdataClient) fetch(context context.Context, endpoint string, params map[string]string) ([]byte, error) {
-	start := time.Now()
-	var duration time.Duration
-
-	// Construct the full URL with query parameters.
-	reqURL, err := url.Parse(c.baseURL + endpoint)
+// buildHttpRequest creates an HTTP request for the specified endpoint with the given parameters.
+// It constructs the full URL with query parameters and returns the prepared request.
+func (c *NewsdataClient) buildHttpRequest(endpoint endpoint, params requestParams) (*http.Request, error) {
+	reqURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, string(endpoint)))
 	if err != nil {
-		return nil, fmt.Errorf("fetch - error parsing URL - baseURL: %s, endpoint: %s, error: %w", c.baseURL, endpoint, err)
+		return nil, fmt.Errorf("buildHttpRequest: error parsing URL - baseURL: %s, endpoint: %s: %w", c.baseURL, endpoint, err)
 	}
 
 	// Convert struct-based query parameters to URL query parameters.
@@ -153,173 +140,48 @@ func (c *NewsdataClient) fetch(context context.Context, endpoint string, params 
 	}
 	reqURL.RawQuery = query.Encode()
 
-	// Create and execute the HTTP request.
-	c.logger.Debug("newsdata: fetch - request", "url", reqURL.String())
-	defer func() {
-		duration = time.Since(start)
-		c.logger.Debug("newsdata: fetch - response", "url", reqURL.String(), "duration", duration)
-	}()
-	req, err := http.NewRequest("GET", reqURL.String(), nil)
-	req = req.WithContext(context)
+	// Create the HTTP request.
+	httpReq, err := http.NewRequest("GET", reqURL.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("fetch - error creating request - url: %s, error: %w", reqURL.String(), err)
+		return nil, fmt.Errorf("buildHttpRequest: error creating request - url: %s: %w", reqURL.String(), err)
 	}
-	req.Header.Set("X-ACCESS-KEY", c.apiKey)
-	resp, err := c.httpClient.Do(req)
+	return httpReq, nil
+}
+
+// fetch sends an HTTP request and decodes the response.
+func (c *NewsdataClient) fetch(context context.Context, endpoint endpoint, params requestParams) ([]byte, error) {
+	start := time.Now()
+
+	httpReq, err := c.buildHttpRequest(endpoint, params)
 	if err != nil {
-		return nil, fmt.Errorf("fetch - error executing request - url: %s, error: %w", reqURL.String(), err)
+		return nil, fmt.Errorf("fetch: error building HTTP request: %w", err)
+	}
+
+	// Create and execute the HTTP request.
+	defer func() {
+		c.logger.Debug("newsdata: fetch - response", "url", httpReq.URL.String(), "duration", time.Since(start))
+	}()
+	httpReq.Header.Set("X-ACCESS-KEY", c.apiKey)
+	httpReq = httpReq.WithContext(context)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("fetch - error executing request - url: %s: %w", httpReq.URL.String(), err)
 	}
 	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("fetch - error reading response body - url: %s, error: %w", reqURL.String(), err)
+		return nil, fmt.Errorf("fetch - error reading response body - url: %s: %w", httpReq.URL.String(), err)
 	}
 
 	// Handle non-200 status codes.
 	if resp.StatusCode != http.StatusOK {
 		var errorData errorResponse
 		if err := json.Unmarshal(body, &errorData); err != nil {
-			return nil, fmt.Errorf("fetch - error unmarshalling error response - url: %s, error: %w", reqURL.String(), err)
+			return nil, fmt.Errorf("fetch - error unmarshalling error response - url: %s: %w", httpReq.URL.String(), err)
 		}
-		return nil, fmt.Errorf("fetch - error reading response body - url: %s, error: %w", reqURL.String(), errors.New(errorData.Error.Message))
+		return nil, fmt.Errorf("fetch - error reading response body - url: %s: %w", httpReq.URL.String(), errors.New(errorData.Error.Message))
 	}
 
 	return body, nil
-}
-
-func (c *NewsdataClient) fetchNews(req ArticleRequest) (*newsResponse, error) {
-	body, err := c.fetch(req.context, req.service.endpoint(), req.params)
-	if err != nil {
-		return nil, fmt.Errorf("fetchNews - error fetching news - error: %w", err)
-	}
-	// Decode the JSON response.
-	var data newsResponse
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, fmt.Errorf("fetchNews - error unmarshalling news response - error: %w", err)
-	}
-	return &data, nil
-}
-
-// StreamArticles streams news Articles from the API.
-func (c *NewsdataClient) StreamArticles(req ArticleRequest, maxResults int) (<-chan *Article, <-chan error) {
-	out := make(chan *Article)
-	errChan := make(chan error)
-	go func() {
-		start := time.Now()
-		defer close(out)
-		defer close(errChan)
-		articlesCount := 0
-		defer func() {
-			// Closure are evaluated when the function is executed, not when defer is defined. Hence, articlesCount will have the correct value.
-			c.logger.Debug("newsdata: streamArticles - done", "service", req.service, "params", req.params, "articlesCount", articlesCount, "duration", time.Since(start))
-		}()
-		for {
-			res, err := c.fetchNews(req)
-			if err != nil {
-				errChan <- fmt.Errorf("newsdata: streamArticles - error fetching news - error: %w", err)
-				return
-			}
-			if res.TotalResults == 0 {
-				return
-			}
-			if maxResults == 0 || res.TotalResults < maxResults {
-				maxResults = res.TotalResults
-			}
-			articles := res.Articles
-			for i := 0; i < len(articles); i++ {
-				if articlesCount < maxResults {
-					out <- &articles[i]
-					articlesCount++
-				} else {
-					return
-				}
-			}
-			if res.NextPage != "" {
-				req.params["page"] = res.NextPage
-			} else {
-				return
-			}
-		}
-	}()
-	return out, errChan
-}
-
-// GetArticles fetches news Articles from the API.
-func (c *NewsdataClient) GetArticles(req ArticleRequest, maxResults int) ([]*Article, error) {
-	articleChan, errChan := c.StreamArticles(req, maxResults)
-	var articles []*Article
-	if maxResults > 0 {
-		articles = make([]*Article, 0, maxResults)
-	} else {
-		articles = make([]*Article, 0)
-	}
-	articlesCount := 0
-	for {
-		select {
-		case article, ok := <-articleChan:
-			if !ok {
-				// Channel is closed, all articles have been processed
-				articles = articles[:articlesCount]
-				return articles, nil
-			}
-			// Process each article
-			articles = append(articles, article)
-			articlesCount++
-		case err := <-errChan:
-			if err != nil {
-				return nil, fmt.Errorf("newsdata: getArticles - error fetching articles - error: %w", err)
-			}
-		}
-	}
-}
-
-// Source represents a news source.
-//
-// See https://newsdata.io/documentation/#news-sources
-type Source struct {
-	Id          string   `json:"id"`
-	Name        string   `json:"name"`
-	Url         string   `json:"url"`
-	IconUrl     string   `json:"icon"`
-	Priority    int      `json:"priority"`
-	Description string   `json:"description"`
-	Categories  []string `json:"category"`
-	Languages   []string `json:"language"`
-	Countries   []string `json:"country"`
-	LastFetch   DateTime `json:"last_fetch"`
-}
-
-// sourcesResponse represents the news sources API response.
-//
-// See https://newsdata.io/documentation/#news-sources
-type sourcesResponse struct {
-	Status       string   `json:"status"`       // Response status ("success" or error message)
-	TotalResults int      `json:"totalResults"` // Total number of news sources matching the query
-	Sources      []Source `json:"results"`      // Array of news sources
-}
-
-// GetSources fetches news sources from the API.
-func (c *NewsdataClient) GetSources(req SourceRequest) ([]*Source, error) {
-	start := time.Now()
-	sources := make([]*Source, 0, 100)
-	defer func() {
-		// Closure are evaluated when the function is executed, not when defer is defined. Hence, sources will have the correct length.
-		c.logger.Debug("newsdata: getSources - done", "params", req.params, "sources", len(sources), "duration", time.Since(start))
-	}()
-	body, err := c.fetch(req.context, "/sources", req.params)
-	if err != nil {
-		return nil, fmt.Errorf("newsdata: getSources - error fetching sources - error: %w", err)
-	}
-
-	// Decode the JSON response.
-	var res sourcesResponse
-	if err := json.Unmarshal(body, &res); err != nil { // Parse []byte to go struct pointer
-		return nil, fmt.Errorf("newsdata: getSources - error unmarshalling sources response - error: %w", err)
-	}
-	resSources := res.Sources
-	for i := 0; i < len(resSources); i++ {
-		sources = append(sources, &resSources[i])
-	}
-
-	return sources, nil
 }

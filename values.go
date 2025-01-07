@@ -1,15 +1,5 @@
 package newsdata
 
-var allowedValues = map[string][]string{
-	"binaries":        allowedBinaries,
-	"categories":      allowedCategories,
-	"countries":       allowedCountries,
-	"languages":       allowedLanguages,
-	"priorityDomains": allowedPriorityDomains,
-	"sentiments":      allowedSentiments,
-	"tags":            allowedTags,
-}
-
 // allowedBinaries defines the valid values for pseudo-boolean fields.
 var allowedBinaries = []string{"1", "0"}
 

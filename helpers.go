@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// UnmarshalJSON implements the json.Unmarshaler interface for DateTime.
+// It parses the date string using the time.DateTime format and handles null values.
 func (t *DateTime) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
@@ -22,6 +24,9 @@ func (t *DateTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface for Tags.
+// It handles special cases where the API returns restriction messages or null values,
+// and splits comma-separated tag strings into slices.
 func (t *Tags) UnmarshalJSON(b []byte) error {
 	value := string(b)
 	if value == "null" || strings.HasPrefix(value, "ONLY AVAILABLE IN ") {
@@ -36,6 +41,9 @@ func (t *Tags) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface for SentimentStats.
+// It handles cases where the API returns error messages for plan restrictions,
+// null values, and parses the sentiment statistics into their respective fields.
 func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 	// If the API returns an error (typically "ONLY AVAILABLE IN PROFESSIONAL AND CORPORATE PLANS"), handle it nicely
 	// Handle "null" case also
@@ -70,16 +78,16 @@ func (t *SentimentStats) UnmarshalJSON(b []byte) error {
 
 // Logger Helpers
 
-// A levelHandler wraps a Handler with an Enabled method
-// that returns false for levels below a minimum.
+// levelHandler wraps a slog.Handler with level-based filtering capabilities.
+// It implements all Handler methods and adds level-based message filtering.
 type levelHandler struct {
 	level   slog.Leveler
 	handler slog.Handler
 	writer  io.Writer
 }
 
-// NewlevelHandler returns a levelHandler with the given level.
-// All methods except Enabled delegate to h.
+// newlevelHandler creates a new levelHandler with the specified minimum log level.
+// It wraps the provided handler and optimizes chains of levelHandlers by unwrapping them.
 func newlevelHandler(level slog.Leveler, h slog.Handler, w io.Writer) *levelHandler {
 	// Optimization: avoid chains of levelHandlers.
 	if lh, ok := h.(*levelHandler); ok {
@@ -88,33 +96,36 @@ func newlevelHandler(level slog.Leveler, h slog.Handler, w io.Writer) *levelHand
 	return &levelHandler{level, h, w}
 }
 
-// Enabled implements Handler.Enabled by reporting whether
-// level is at least as large as h's level.
+// Enabled implements slog.Handler.Enabled by checking if the log level
+// meets the minimum level requirement.
 func (h *levelHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.level.Level()
 }
 
-// Handle implements Handler.Handle.
+// Handle implements slog.Handler.Handle by delegating to the wrapped handler.
 func (h *levelHandler) Handle(ctx context.Context, r slog.Record) error {
 	return h.handler.Handle(ctx, r)
 }
 
-// WithAttrs implements Handler.WithAttrs.
+// WithAttrs implements slog.Handler.WithAttrs by creating a new levelHandler
+// with the additional attributes.
 func (h *levelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return newlevelHandler(h.level, h.handler.WithAttrs(attrs), h.writer)
 }
 
-// WithGroup implements Handler.WithGroup.
+// WithGroup implements slog.Handler.WithGroup by creating a new levelHandler
+// with the additional group name.
 func (h *levelHandler) WithGroup(name string) slog.Handler {
 	return newlevelHandler(h.level, h.handler.WithGroup(name), h.writer)
 }
 
-// Handler returns the Handler wrapped by h.
+// Handler returns the underlying slog.Handler wrapped by this levelHandler.
 func (h *levelHandler) Handler() slog.Handler {
 	return h.handler
 }
 
-// Create a new logger that writes on the chosen io.writer with the given level.
+// newCustomLogger creates a new slog.Logger with level-based filtering.
+// It configures the logger with the specified writer and minimum log level.
 func newCustomLogger(w io.Writer, level slog.Level) *slog.Logger {
 	th := slog.NewTextHandler(w, nil)
 	logger := slog.New(newlevelHandler(level, th, w))
