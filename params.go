@@ -57,11 +57,14 @@ func newRequestParams[T NewsRequestParams | SourceRequestParams](query string, l
 type NewsRequestParams func(p requestParams, endpoint endpoint, logger *slog.Logger)
 
 // WithQueryInTitle adds a query to search in article titles.
+//
+// QueryInTitle can't be used with Query or QueryInMeta parameter in the same query.
 func WithQueryInTitle(query string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
-		if p["qInMeta"] != "" {
-			logger.Error("newsdata: query in title and metadata cannot be used together")
-			return
+		if p["qInMeta"] != "" || p["q"] != "" {
+			logger.Error("newsdata: QueryInTitle can't be used with Query or QueryInMeta. Only QueryInTitle will be used.")
+			delete(p, "qInMeta")
+			delete(p, "q")
 		}
 		if len(query) > 512 {
 			logger.Warn("newsdata: query length is greater than 512, truncating to 512")
@@ -72,11 +75,14 @@ func WithQueryInTitle(query string) NewsRequestParams {
 }
 
 // WithQueryInMetadata adds a query to search in article metadata.
+//
+// QueryInMetadata can't be used with Query or QueryInTitle parameter in the same query.
 func WithQueryInMetadata(query string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
-		if p["qInTitle"] != "" {
-			logger.Error("newsdata: query in title and metadata cannot be used together")
-			return
+		if p["qInTitle"] != "" || p["q"] != "" {
+			logger.Error("newsdata: QueryInMetadata can't be used with Query or QueryInTitle. Only QueryInMetadata will be used.")
+			delete(p, "qInTitle")
+			delete(p, "q")
 		}
 		if len(query) > 512 {
 			logger.Warn("newsdata: query length is greater than 512, truncating to 512")
@@ -161,6 +167,7 @@ func validateCountries(countries []string, logger *slog.Logger) []string {
 }
 
 // WithCountries adds country filters to the article request.
+//
 // It accepts up to 5 country codes and validates them against allowed values.
 func WithCountries(countries ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -192,7 +199,9 @@ func validateLanguages(languages []string, logger *slog.Logger) []string {
 	return safeLanguages
 }
 
-// WithLanguages adds language filters to the article request, maximum 5 languages.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed languages.
+// WithLanguages adds language filters to the article request, maximum 5 languages.
+//
+// Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed languages.
 func WithLanguages(languages ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(languages) == 0 {
@@ -205,7 +214,9 @@ func WithLanguages(languages ...string) NewsRequestParams {
 	}
 }
 
-// WithDomains adds domain filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
+// WithDomains adds domain filters to the article request, maximum 5 domains.
+//
+// Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
 func WithDomains(domains ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(domains) == 0 {
@@ -219,7 +230,9 @@ func WithDomains(domains ...string) NewsRequestParams {
 	}
 }
 
-// WithDomainExcluded adds domain exclusion filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
+// WithDomainExcluded adds domain exclusion filters to the article request, maximum 5 domains.
+//
+// Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
 func WithDomainExcluded(domains ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(domains) == 0 {
@@ -244,6 +257,7 @@ func validatePriorityDomain(priorityDomain string, logger *slog.Logger) bool {
 }
 
 // WithDomainUrls adds domain URL filters to the article request.
+//
 // It accepts up to 5 domain URLs for filtering news sources.
 func WithDomainUrls(domainUrls ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -281,7 +295,9 @@ func WithFieldsExcluded(fields ...string) NewsRequestParams {
 	}
 }
 
-// WithTimezone Search the news articles for a specific timezone.  Please refer to [timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the list of allowed timezones.
+// WithTimezone Search the news articles for a specific timezone.
+//
+// Please refer to [timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the list of allowed timezones.
 func WithTimezone(timezone string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if timezone == "" {
@@ -334,6 +350,7 @@ func WithNoVideo() NewsRequestParams {
 }
 
 // WithFromDate sets the start date for the article search.
+//
 // The date is formatted as YYYY-MM-DD in the request.
 func WithFromDate(date time.Time) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -342,6 +359,7 @@ func WithFromDate(date time.Time) NewsRequestParams {
 }
 
 // WithToDate sets the end date for the article search.
+//
 // The date is formatted as YYYY-MM-DD in the request.
 func WithToDate(date time.Time) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -350,6 +368,7 @@ func WithToDate(date time.Time) NewsRequestParams {
 }
 
 // WithTimeframe sets a time window for the article search.
+//
 // The timeframe can be specified in hours and minutes, up to 48 hours.
 func WithTimeframe(hours int, minutes int) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -378,6 +397,7 @@ func WithTimeframe(hours int, minutes int) NewsRequestParams {
 }
 
 // WithSentiment adds sentiment analysis filter to the article request.
+//
 // It validates the sentiment value against allowed options.
 func WithSentiment(sentiment string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -397,6 +417,7 @@ func WithSentiment(sentiment string) NewsRequestParams {
 }
 
 // validateTags validates and filters the provided tags.
+//
 // It ensures only allowed tags are included.
 func validateTags(tags []string, logger *slog.Logger) []string {
 	safeTags := make([]string, 0, len(tags))
@@ -411,6 +432,7 @@ func validateTags(tags []string, logger *slog.Logger) []string {
 }
 
 // WithTags adds tag filters to the article request.
+//
 // It accepts multiple tags and validates them against allowed values.
 func WithTags(tags ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
@@ -441,7 +463,8 @@ func WithRemoveDuplicates() NewsRequestParams {
 }
 
 // WithCoins adds cryptocurrency coin filters to the article request.
-// It accepts up to 5 coin symbols for filtering.
+//
+// It accepts up to 5 coin symbols (like btc, eth, usdt, bnb, etc.) for filtering.
 func WithCoins(coins ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(coins) == 0 {
@@ -456,6 +479,7 @@ func WithCoins(coins ...string) NewsRequestParams {
 }
 
 // WithSize sets the number of articles to return per page.
+//
 // The value must be between 1 and 50.
 func WithSize(size int) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {

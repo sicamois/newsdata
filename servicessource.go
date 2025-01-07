@@ -19,8 +19,8 @@ func (c *NewsDataClient) newSourcesService() *SourcesService {
 }
 
 // Source represents a news source from the NewsData API.
-// It contains metadata about the news provider including its identity,
-// content categories, and geographical coverage.
+//
+// See https://newsdata.io/documentation/#news-sources for more details.
 type Source struct {
 	Id          string   `json:"id"`          // Unique identifier for the source
 	Name        string   `json:"name"`        // Display name of the source
@@ -45,6 +45,7 @@ type sourcesResponse struct {
 
 // Get retrieves a list of news sources matching the provided parameters.
 // It returns all available sources if no parameters are specified.
+//
 // The method supports filtering by country and other criteria through SourceRequestParams.
 func (s *SourcesService) Get(ctx context.Context, params ...SourceRequestParams) ([]*Source, error) {
 	sources := make([]*Source, 0, 100)

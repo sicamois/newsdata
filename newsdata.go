@@ -15,6 +15,7 @@ import (
 
 // NewsDataClient is the base client to access NewsData API.
 // It provides methods to fetch news data and manage API interactions.
+//
 // The client handles HTTP requests, authentication, and logging configurations.
 type NewsDataClient struct {
 	apiKey      string
@@ -38,6 +39,7 @@ type clientOptions struct {
 type NewsDataClientOption func(*clientOptions)
 
 // WithAPIKey sets the API key for the client.
+//
 // If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
 // environment variable. It will panic if no API key is available.
 func WithAPIKey(apiKey string) NewsDataClientOption {
@@ -47,6 +49,7 @@ func WithAPIKey(apiKey string) NewsDataClientOption {
 }
 
 // WithTimeout sets the global timeout for the http client.
+//
 // If no timeout is provided, the client will use a default timeout of 5 seconds.
 func WithTimeout(timeout time.Duration) NewsDataClientOption {
 	return func(o *clientOptions) {
@@ -55,6 +58,7 @@ func WithTimeout(timeout time.Duration) NewsDataClientOption {
 }
 
 // WithCustomLoggerWriter sets a custom logger writer for the client.
+//
 // If no custom logger writer is provided, the client will use the default logger.
 func WithCustomLogWriter(w io.Writer) NewsDataClientOption {
 	return func(o *clientOptions) {
@@ -63,6 +67,7 @@ func WithCustomLogWriter(w io.Writer) NewsDataClientOption {
 }
 
 // WithLogLevel sets the log level for the client.
+//
 // If no log level is provided, the client will use a default log level of slog.LevelInfo.
 func WithLogLevel(level slog.Level) NewsDataClientOption {
 	return func(o *clientOptions) {
@@ -71,6 +76,7 @@ func WithLogLevel(level slog.Level) NewsDataClientOption {
 }
 
 // NewClient creates a new NewsData API client with the provided options.
+//
 // If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
 // environment variable. It will panic if no API key is available.
 func NewClient(opts ...NewsDataClientOption) *NewsDataClient {

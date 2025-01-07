@@ -8,6 +8,7 @@ import (
 )
 
 // NewsService handles operations related to news articles from the NewsData API.
+//
 // It provides methods to fetch latest news, news archives, and crypto news.
 type NewsService struct {
 	client   *NewsDataClient
@@ -55,7 +56,8 @@ type SentimentStats struct {
 type Tags []string
 
 // NewsArticle represents a single news article from the NewsData API.
-// It contains all the metadata and content associated with the article.
+//
+// See https://newsdata.io/documentation/#http_response for more details.
 type NewsArticle struct {
 	Id             string         `json:"Article_id"`      // Unique identifier for the article
 	Title          string         `json:"title"`           // Article headline
@@ -108,6 +110,7 @@ func (s *NewsService) fetch(ctx context.Context, params requestParams) (*newsRes
 }
 
 // Stream returns a channel that streams news articles matching the given query and parameters.
+//
 // It handles pagination automatically and continues streaming until all matching articles
 // are retrieved or the context is cancelled. Errors are sent on the error channel.
 func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsRequestParams) (<-chan *NewsArticle, <-chan error) {
@@ -153,8 +156,8 @@ func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsRe
 }
 
 // Get retrieves a specified number of news articles matching the given query and parameters.
+//
 // It returns at most maxResults articles. If maxResults is 0, it returns all matching articles.
-// The method uses Stream internally but handles the article collection for the caller.
 func (s *NewsService) Get(ctx context.Context, query string, maxResults int, params ...NewsRequestParams) ([]*NewsArticle, error) {
 	var articles []*NewsArticle
 	defer func() {
@@ -171,7 +174,7 @@ func (s *NewsService) Get(ctx context.Context, query string, maxResults int, par
 	articlesChan, errChan := s.Stream(newCtx, query, params...)
 	for article := range articlesChan {
 		articles = append(articles, article)
-		if len(articles) == maxResults {
+		if maxResults > 0 && len(articles) == maxResults {
 			cancel()
 			return articles[:maxResults], nil
 		}
