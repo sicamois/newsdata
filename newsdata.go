@@ -46,19 +46,19 @@ func WithAPIKey(apiKey string) NewsDataClientOption {
 	}
 }
 
-// WithCustomLoggerWriter sets a custom logger writer for the client.
-// If no custom logger writer is provided, the client will use the default logger.
-func WithCustomLoggerWriter(w io.Writer) NewsDataClientOption {
-	return func(o *clientOptions) {
-		o.customLoggerWriter = w
-	}
-}
-
-// WithTimeout sets the timeout for the client.
+// WithTimeout sets the global timeout for the http client.
 // If no timeout is provided, the client will use a default timeout of 5 seconds.
 func WithTimeout(timeout time.Duration) NewsDataClientOption {
 	return func(o *clientOptions) {
 		o.timeout = timeout
+	}
+}
+
+// WithCustomLoggerWriter sets a custom logger writer for the client.
+// If no custom logger writer is provided, the client will use the default logger.
+func WithCustomLogWriter(w io.Writer) NewsDataClientOption {
+	return func(o *clientOptions) {
+		o.customLoggerWriter = w
 	}
 }
 
@@ -111,7 +111,7 @@ func NewClient(opts ...NewsDataClientOption) *NewsDataClient {
 	return client
 }
 
-// Logger returns the client's configured logger instance.
+// Logger returns the client's logger.
 func (c *NewsDataClient) Logger() *slog.Logger {
 	return c.logger
 }
