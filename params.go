@@ -39,7 +39,7 @@ type requestParams map[string]string
 
 // newRequestParams creates a new set of request parameters with the given query and options.
 // It validates and processes the parameters based on the endpoint type.
-func newRequestParams[T NewsParams | SourceParams](query string, logger *slog.Logger, endpoint endpoint, params ...T) requestParams {
+func newRequestParams[T NewsRequestParams | SourceRequestParams](query string, logger *slog.Logger, endpoint endpoint, params ...T) requestParams {
 	p := requestParams{}
 	if query != "" {
 		if endpoint != endpointSources {
@@ -54,10 +54,10 @@ func newRequestParams[T NewsParams | SourceParams](query string, logger *slog.Lo
 	return p
 }
 
-type NewsParams func(p requestParams, endpoint endpoint, logger *slog.Logger)
+type NewsRequestParams func(p requestParams, endpoint endpoint, logger *slog.Logger)
 
 // WithQueryInTitle adds a query to search in article titles.
-func WithQueryInTitle(query string) NewsParams {
+func WithQueryInTitle(query string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if p["qInMeta"] != "" {
 			logger.Error("newsdata: query in title and metadata cannot be used together")
@@ -72,7 +72,7 @@ func WithQueryInTitle(query string) NewsParams {
 }
 
 // WithQueryInMetadata adds a query to search in article metadata.
-func WithQueryInMetadata(query string) NewsParams {
+func WithQueryInMetadata(query string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if p["qInTitle"] != "" {
 			logger.Error("newsdata: query in title and metadata cannot be used together")
@@ -107,7 +107,7 @@ func validateCategories(categories []string, logger *slog.Logger) []string {
 // WithCategories adds category filters to the article request, maximum 5 categories.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed categories.
 //
 // You can use either the 'categories' parameter to include specific categories or the 'excludecategories' parameter to exclude them, but not both simultaneously.
-func WithCategories(categories ...string) NewsParams {
+func WithCategories(categories ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(categories) == 0 {
 			return
@@ -126,7 +126,7 @@ func WithCategories(categories ...string) NewsParams {
 // WithCategoriesExlucded adds category exclusion filters to the article request, maximum 5 categories.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed categories.
 //
 // You can use either the 'category' parameter to include specific categories or the 'excludecategory' parameter to exclude them, but not both simultaneously.
-func WithCategoriesExlucded(categories ...string) NewsParams {
+func WithCategoriesExlucded(categories ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(categories) == 0 {
 			return
@@ -162,7 +162,7 @@ func validateCountries(countries []string, logger *slog.Logger) []string {
 
 // WithCountries adds country filters to the article request.
 // It accepts up to 5 country codes and validates them against allowed values.
-func WithCountries(countries ...string) NewsParams {
+func WithCountries(countries ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(countries) == 0 {
 			return
@@ -193,7 +193,7 @@ func validateLanguages(languages []string, logger *slog.Logger) []string {
 }
 
 // WithLanguages adds language filters to the article request, maximum 5 languages.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed languages.
-func WithLanguages(languages ...string) NewsParams {
+func WithLanguages(languages ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(languages) == 0 {
 			return
@@ -206,7 +206,7 @@ func WithLanguages(languages ...string) NewsParams {
 }
 
 // WithDomains adds domain filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
-func WithDomains(domains ...string) NewsParams {
+func WithDomains(domains ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(domains) == 0 {
 			return
@@ -220,7 +220,7 @@ func WithDomains(domains ...string) NewsParams {
 }
 
 // WithDomainExcluded adds domain exclusion filters to the article request, maximum 5 domains.  Please refer to [newsdata.io docs](https://newsdata.io/documentation/#latest-news) for the list of allowed domains.
-func WithDomainExcluded(domains ...string) NewsParams {
+func WithDomainExcluded(domains ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(domains) == 0 {
 			return
@@ -245,7 +245,7 @@ func validatePriorityDomain(priorityDomain string, logger *slog.Logger) bool {
 
 // WithDomainUrls adds domain URL filters to the article request.
 // It accepts up to 5 domain URLs for filtering news sources.
-func WithDomainUrls(domainUrls ...string) NewsParams {
+func WithDomainUrls(domainUrls ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(domainUrls) == 0 {
 			return
@@ -259,7 +259,7 @@ func WithDomainUrls(domainUrls ...string) NewsParams {
 }
 
 // WithSourcePriorityDomain sets a priority domain for the article request
-func WithSourcePriorityDomain(priorityDomain string) NewsParams {
+func WithSourcePriorityDomain(priorityDomain string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if priorityDomain == "" {
 			return
@@ -272,7 +272,7 @@ func WithSourcePriorityDomain(priorityDomain string) NewsParams {
 }
 
 // WithFieldsExcluded specifies fields to exclude from the response.
-func WithFieldsExcluded(fields ...string) NewsParams {
+func WithFieldsExcluded(fields ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(fields) == 0 {
 			return
@@ -282,7 +282,7 @@ func WithFieldsExcluded(fields ...string) NewsParams {
 }
 
 // WithTimezone Search the news articles for a specific timezone.  Please refer to [timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the list of allowed timezones.
-func WithTimezone(timezone string) NewsParams {
+func WithTimezone(timezone string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if timezone == "" {
 			return
@@ -292,42 +292,42 @@ func WithTimezone(timezone string) NewsParams {
 }
 
 // WithOnlyFullContent requests only articles with a full content.
-func WithOnlyFullContent() NewsParams {
+func WithOnlyFullContent() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["full_content"] = "1"
 	}
 }
 
 // WithNoFullContent requests only articles without a full content.
-func WithNoFullContent() NewsParams {
+func WithNoFullContent() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["full_content"] = "0"
 	}
 }
 
 // WithOnlyImage requests only articles with an image.
-func WithOnlyImage() NewsParams {
+func WithOnlyImage() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["image"] = "1"
 	}
 }
 
 // WithNoImage requests only articles without image.
-func WithNoImage() NewsParams {
+func WithNoImage() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["image"] = "0"
 	}
 }
 
 // WithOnlyVideo requests only articles with a video.
-func WithOnlyVideo() NewsParams {
+func WithOnlyVideo() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["video"] = "1"
 	}
 }
 
 // WithNoVideo requests only articles without video.
-func WithNoVideo() NewsParams {
+func WithNoVideo() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["video"] = "0"
 	}
@@ -335,7 +335,7 @@ func WithNoVideo() NewsParams {
 
 // WithFromDate sets the start date for the article search.
 // The date is formatted as YYYY-MM-DD in the request.
-func WithFromDate(date time.Time) NewsParams {
+func WithFromDate(date time.Time) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["from_date"] = date.Format("2006-01-02")
 	}
@@ -343,7 +343,7 @@ func WithFromDate(date time.Time) NewsParams {
 
 // WithToDate sets the end date for the article search.
 // The date is formatted as YYYY-MM-DD in the request.
-func WithToDate(date time.Time) NewsParams {
+func WithToDate(date time.Time) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		p["to_date"] = date.Format("2006-01-02")
 	}
@@ -351,9 +351,10 @@ func WithToDate(date time.Time) NewsParams {
 
 // WithTimeframe sets a time window for the article search.
 // The timeframe can be specified in hours and minutes, up to 48 hours.
-func WithTimeframe(hours int, minutes int) NewsParams {
+func WithTimeframe(hours int, minutes int) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if hours+minutes == 0 || hours < 0 || minutes < 0 {
+			logger.Error("newsdata: timeframe arguments must be greater than 0")
 			return
 		}
 		switch endpoint {
@@ -365,12 +366,12 @@ func WithTimeframe(hours int, minutes int) NewsParams {
 				}
 				p["timeframe"] = fmt.Sprintf("%d", hours)
 			} else {
-				min := hours*60 + minutes
-				if min > 2880 {
+				totalMinutes := hours*60 + minutes
+				if totalMinutes > 2880 {
 					logger.Error("newsdata: timeframe must be between 0h and 48h")
 					return
 				}
-				p["timeframe"] = fmt.Sprintf("%dm", min)
+				p["timeframe"] = fmt.Sprintf("%dm", totalMinutes)
 			}
 		}
 	}
@@ -378,7 +379,7 @@ func WithTimeframe(hours int, minutes int) NewsParams {
 
 // WithSentiment adds sentiment analysis filter to the article request.
 // It validates the sentiment value against allowed options.
-func WithSentiment(sentiment string) NewsParams {
+func WithSentiment(sentiment string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if endpoint == endpointNewsArchive {
 			logger.Warn(fmt.Sprintf("newsdata: sentiment is not supported for %s", endpoint.String()))
@@ -411,7 +412,7 @@ func validateTags(tags []string, logger *slog.Logger) []string {
 
 // WithTags adds tag filters to the article request.
 // It accepts multiple tags and validates them against allowed values.
-func WithTags(tags ...string) NewsParams {
+func WithTags(tags ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(tags) == 0 {
 			return
@@ -429,7 +430,7 @@ func WithTags(tags ...string) NewsParams {
 
 // WithRemoveDuplicates enables duplicate article filtering in the response.
 // This option is not supported for news archive requests.
-func WithRemoveDuplicates() NewsParams {
+func WithRemoveDuplicates() NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if endpoint == endpointNewsArchive {
 			logger.Warn(fmt.Sprintf("newsdata: remove duplicates is not supported for %s", endpoint.String()))
@@ -441,7 +442,7 @@ func WithRemoveDuplicates() NewsParams {
 
 // WithCoins adds cryptocurrency coin filters to the article request.
 // It accepts up to 5 coin symbols for filtering.
-func WithCoins(coins ...string) NewsParams {
+func WithCoins(coins ...string) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if len(coins) == 0 {
 			return
@@ -456,7 +457,7 @@ func WithCoins(coins ...string) NewsParams {
 
 // WithSize sets the number of articles to return per page.
 // The value must be between 1 and 50.
-func WithSize(size int) NewsParams {
+func WithSize(size int) NewsRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if size < 1 || size > 50 {
 			logger.Error("newsdata: size must be between 1 and 50")
@@ -466,12 +467,12 @@ func WithSize(size int) NewsParams {
 	}
 }
 
-// SourceParams is a function type for configuring source request parameters.
-type SourceParams func(p requestParams, endpoint endpoint, logger *slog.Logger)
+// SourceRequestParams is a function type for configuring source request parameters.
+type SourceRequestParams func(p requestParams, endpoint endpoint, logger *slog.Logger)
 
 // WithCountry adds a country filter to the source request.
 // It validates the country code against allowed values.
-func WithCountry(country string) SourceParams {
+func WithCountry(country string) SourceRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if country == "" {
 			return
@@ -487,7 +488,7 @@ func WithCountry(country string) SourceParams {
 }
 
 // WithCategory adds category filter to the source request
-func WithCategory(category string) SourceParams {
+func WithCategory(category string) SourceRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if category == "" {
 			return
@@ -503,7 +504,7 @@ func WithCategory(category string) SourceParams {
 }
 
 // WithLanguage adds language filter to the source request
-func WithLanguage(language string) SourceParams {
+func WithLanguage(language string) SourceRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if language == "" {
 			return
@@ -519,7 +520,7 @@ func WithLanguage(language string) SourceParams {
 }
 
 // WithPriorityDomain sets a priority domain for the source request
-func WithPriorityDomain(priorityDomain string) SourceParams {
+func WithPriorityDomain(priorityDomain string) SourceRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if priorityDomain == "" {
 			return
@@ -532,7 +533,7 @@ func WithPriorityDomain(priorityDomain string) SourceParams {
 }
 
 // WithDomainUrl sets a domain URL filter for the source request
-func WithDomainUrl(domainUrl string) SourceParams {
+func WithDomainUrl(domainUrl string) SourceRequestParams {
 	return func(p requestParams, endpoint endpoint, logger *slog.Logger) {
 		if domainUrl == "" {
 			return

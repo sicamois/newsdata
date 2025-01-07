@@ -9,10 +9,10 @@ import (
 // SourcesService handles operations related to news sources from the NewsData API.
 // It provides methods to retrieve information about available news sources.
 type SourcesService struct {
-	client *NewsdataClient
+	client *NewsDataClient
 }
 
-func (c *NewsdataClient) newSourcesService() *SourcesService {
+func (c *NewsDataClient) newSourcesService() *SourcesService {
 	return &SourcesService{
 		client: c,
 	}
@@ -45,8 +45,8 @@ type sourcesResponse struct {
 
 // Get retrieves a list of news sources matching the provided parameters.
 // It returns all available sources if no parameters are specified.
-// The method supports filtering by country and other criteria through SourceParams.
-func (s *SourcesService) Get(ctx context.Context, params ...SourceParams) ([]*Source, error) {
+// The method supports filtering by country and other criteria through SourceRequestParams.
+func (s *SourcesService) Get(ctx context.Context, params ...SourceRequestParams) ([]*Source, error) {
 	sources := make([]*Source, 0, 100)
 	reqParams := newRequestParams("", s.client.logger, endpointSources, params...)
 	body, err := s.client.fetch(ctx, endpointSources, reqParams)

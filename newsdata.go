@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-// NewsdataClient is the base client to access NewsData API.
+// NewsDataClient is the base client to access NewsData API.
 // It provides methods to fetch news data and manage API interactions.
 // The client handles HTTP requests, authentication, and logging configurations.
-type NewsdataClient struct {
+type NewsDataClient struct {
 	apiKey      string
 	baseURL     string
 	httpClient  *http.Client
@@ -34,13 +34,13 @@ type clientOptions struct {
 	timeout            time.Duration
 }
 
-// ClientOption is a functional option for configuring the NewsdataClient.
-type ClientOption func(*clientOptions)
+// NewsDataClientOption is a functional option for configuring the NewsDataClient.
+type NewsDataClientOption func(*clientOptions)
 
 // WithAPIKey sets the API key for the client.
 // If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
 // environment variable. It will panic if no API key is available.
-func WithAPIKey(apiKey string) ClientOption {
+func WithAPIKey(apiKey string) NewsDataClientOption {
 	return func(o *clientOptions) {
 		o.apiKey = apiKey
 	}
@@ -48,7 +48,7 @@ func WithAPIKey(apiKey string) ClientOption {
 
 // WithCustomLoggerWriter sets a custom logger writer for the client.
 // If no custom logger writer is provided, the client will use the default logger.
-func WithCustomLoggerWriter(w io.Writer) ClientOption {
+func WithCustomLoggerWriter(w io.Writer) NewsDataClientOption {
 	return func(o *clientOptions) {
 		o.customLoggerWriter = w
 	}
@@ -56,7 +56,7 @@ func WithCustomLoggerWriter(w io.Writer) ClientOption {
 
 // WithTimeout sets the timeout for the client.
 // If no timeout is provided, the client will use a default timeout of 5 seconds.
-func WithTimeout(timeout time.Duration) ClientOption {
+func WithTimeout(timeout time.Duration) NewsDataClientOption {
 	return func(o *clientOptions) {
 		o.timeout = timeout
 	}
@@ -64,7 +64,7 @@ func WithTimeout(timeout time.Duration) ClientOption {
 
 // WithLogLevel sets the log level for the client.
 // If no log level is provided, the client will use a default log level of slog.LevelInfo.
-func WithLogLevel(level slog.Level) ClientOption {
+func WithLogLevel(level slog.Level) NewsDataClientOption {
 	return func(o *clientOptions) {
 		o.loggerLevel = level
 	}
@@ -73,7 +73,7 @@ func WithLogLevel(level slog.Level) ClientOption {
 // NewClient creates a new NewsData API client with the provided options.
 // If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
 // environment variable. It will panic if no API key is available.
-func NewClient(opts ...ClientOption) *NewsdataClient {
+func NewClient(opts ...NewsDataClientOption) *NewsDataClient {
 	options := &clientOptions{
 		timeout:     5 * time.Second,
 		loggerLevel: slog.LevelInfo,
@@ -88,7 +88,7 @@ func NewClient(opts ...ClientOption) *NewsdataClient {
 		}
 	}
 
-	client := &NewsdataClient{
+	client := &NewsDataClient{
 		// newsdata.io API base URL
 		baseURL: "https://newsdata.io/api/1",
 		// newsdata.io API key
@@ -112,7 +112,7 @@ func NewClient(opts ...ClientOption) *NewsdataClient {
 }
 
 // Logger returns the client's configured logger instance.
-func (c *NewsdataClient) Logger() *slog.Logger {
+func (c *NewsDataClient) Logger() *slog.Logger {
 	return c.logger
 }
 
@@ -127,7 +127,7 @@ type errorResponse struct {
 
 // buildHttpRequest creates an HTTP request for the specified endpoint with the given parameters.
 // It constructs the full URL with query parameters and returns the prepared request.
-func (c *NewsdataClient) buildHttpRequest(endpoint endpoint, params requestParams) (*http.Request, error) {
+func (c *NewsDataClient) buildHttpRequest(endpoint endpoint, params requestParams) (*http.Request, error) {
 	reqURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, string(endpoint)))
 	if err != nil {
 		return nil, fmt.Errorf("buildHttpRequest: error parsing URL - baseURL: %s, endpoint: %s: %w", c.baseURL, endpoint, err)
@@ -149,7 +149,7 @@ func (c *NewsdataClient) buildHttpRequest(endpoint endpoint, params requestParam
 }
 
 // fetch sends an HTTP request and decodes the response.
-func (c *NewsdataClient) fetch(context context.Context, endpoint endpoint, params requestParams) ([]byte, error) {
+func (c *NewsDataClient) fetch(context context.Context, endpoint endpoint, params requestParams) ([]byte, error) {
 	start := time.Now()
 
 	httpReq, err := c.buildHttpRequest(endpoint, params)

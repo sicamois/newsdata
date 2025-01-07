@@ -10,25 +10,25 @@ import (
 // NewsService handles operations related to news articles from the NewsData API.
 // It provides methods to fetch latest news, news archives, and crypto news.
 type NewsService struct {
-	client   *NewsdataClient
+	client   *NewsDataClient
 	endpoint endpoint
 }
 
-func (c *NewsdataClient) newLatestNewsService() *NewsService {
+func (c *NewsDataClient) newLatestNewsService() *NewsService {
 	return &NewsService{
 		client:   c,
 		endpoint: endpointLatestNews,
 	}
 }
 
-func (c *NewsdataClient) newNewsArchiveService() *NewsService {
+func (c *NewsDataClient) newNewsArchiveService() *NewsService {
 	return &NewsService{
 		client:   c,
 		endpoint: endpointNewsArchive,
 	}
 }
 
-func (c *NewsdataClient) newCryptoNewsService() *NewsService {
+func (c *NewsDataClient) newCryptoNewsService() *NewsService {
 	return &NewsService{
 		client:   c,
 		endpoint: endpointCoinNews,
@@ -110,7 +110,7 @@ func (s *NewsService) fetch(ctx context.Context, params requestParams) (*newsRes
 // Stream returns a channel that streams news articles matching the given query and parameters.
 // It handles pagination automatically and continues streaming until all matching articles
 // are retrieved or the context is cancelled. Errors are sent on the error channel.
-func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsParams) (<-chan *NewsArticle, <-chan error) {
+func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsRequestParams) (<-chan *NewsArticle, <-chan error) {
 	out := make(chan *NewsArticle)
 	errChan := make(chan error, 1)
 
@@ -155,7 +155,7 @@ func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsPa
 // Get retrieves a specified number of news articles matching the given query and parameters.
 // It returns at most maxResults articles. If maxResults is 0, it returns all matching articles.
 // The method uses Stream internally but handles the article collection for the caller.
-func (s *NewsService) Get(ctx context.Context, query string, maxResults int, params ...NewsParams) ([]*NewsArticle, error) {
+func (s *NewsService) Get(ctx context.Context, query string, maxResults int, params ...NewsRequestParams) ([]*NewsArticle, error) {
 	var articles []*NewsArticle
 	defer func() {
 		s.client.logger.Debug("newsdata: Get - done", "service", s.endpoint.String(), "articlesCount", len(articles))
