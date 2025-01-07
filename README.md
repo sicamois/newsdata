@@ -155,12 +155,20 @@ import (
 )
 
 func main() {
+    // Create a log file
+    logFile, err := os.Create("log_" + time.Now().Format("2006-01-02_15-04-05") + ".txt")
+    if err != nil {
+        panic(err)
+    }
+    defer logFile.Close()
+
+    // Create a new client
     client := newsdata.NewClient(
-        newsdata.WithAPIKey("your-api-key"),
         newsdata.WithTimeout(10*time.Second),
-        newsdata.WithCustomLogger(os.Stdout, slog.LevelDebug),
-        newsdata.WithDebugEnabled(true),
+        newsdata.WithCustomLogWriter(logFile),
+        newsdata.WithLogLevel(slog.LevelDebug),
     )
+
     // Use client...
 }
 ```
