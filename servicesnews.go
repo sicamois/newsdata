@@ -123,9 +123,10 @@ func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsRe
 		defer close(errChan)
 		articlesCount := 0
 		reqParams := newRequestParams(query, s.client.logger, s.endpoint, params...)
+		s.client.logger.Debug("retrieving articles started", "service", s.endpoint.String(), "params", reqParams.String())
 		defer func() {
 			// Closure are evaluated when the function is executed, not when defer is defined. Hence, articlesCount & duration will have the correct value.
-			s.client.logger.Debug("newsdata: Stream - done", "service", s.endpoint.String(), "last_params", reqParams, "articlesCount", articlesCount, "duration", time.Since(start))
+			s.client.logger.Debug("retrieving articles ended", "service", s.endpoint.String(), "params", reqParams.String(), "articlesCount", articlesCount, "duration", time.Since(start))
 		}()
 		for {
 			res, err := s.fetch(ctx, reqParams)
@@ -160,9 +161,6 @@ func (s *NewsService) Stream(ctx context.Context, query string, params ...NewsRe
 // It returns at most maxResults articles. If maxResults is 0, it returns all matching articles.
 func (s *NewsService) Get(ctx context.Context, query string, maxResults int, params ...NewsRequestParams) ([]*NewsArticle, error) {
 	var articles []*NewsArticle
-	defer func() {
-		s.client.logger.Debug("newsdata: Get - done", "service", s.endpoint.String(), "articlesCount", len(articles))
-	}()
 	if maxResults > 0 {
 		articles = make([]*NewsArticle, 0, maxResults)
 	} else {

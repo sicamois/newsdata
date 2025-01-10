@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // SourcesService handles operations related to news sources from the NewsData API.
@@ -48,8 +49,16 @@ type sourcesResponse struct {
 //
 // The method supports filtering by country and other criteria through SourceRequestParams.
 func (s *SourcesService) Get(ctx context.Context, params ...SourceRequestParams) ([]*Source, error) {
+	start := time.Now()
 	sources := make([]*Source, 0, 100)
 	reqParams := newRequestParams("", s.client.logger, endpointSources, params...)
+
+	s.client.logger.Debug("retrieving sources started", "service", endpointSources.String(), "params", reqParams.String())
+	defer func() {
+		// Closure are evaluated when the function is executed, not when defer is defined. Hence, articlesCount & duration will have the correct value.
+		s.client.logger.Debug("retrieving sources ended", "service", endpointSources.String(), "params", reqParams.String(), "sourcesCount", len(sources), "duration", time.Since(start))
+	}()
+
 	body, err := s.client.fetch(ctx, endpointSources, reqParams)
 	if err != nil {
 		return nil, fmt.Errorf("newsdata: getSources - error fetching sources - error: %w", err)

@@ -24,7 +24,6 @@ A fully-featured Go client library for the [NewsData.io](https://newsdata.io) AP
   - AI-powered tags and regions
 - **Advanced Configuration**
   - Configurable HTTP client
-  - Structured logging with multiple levels
   - Customizable timeouts
   - Extensive error handling
 
@@ -55,13 +54,12 @@ func main() {
     // Create a new client
     client := newsdata.NewClient(
         newsdata.WithAPIKey("your-api-key"),
-        newsdata.WithLogLevel(slog.LevelDebug),
     )
 
     // Get latest news articles about AI
     articles, err := client.LatestNews.Get(
         context.Background(),
-        "artificial intelligence",
+        "artificial intelligence", // query for AI
         10, // limit to 10 articles
         newsdata.WithLanguages("en"),
         newsdata.WithCategories("technology"),
@@ -76,14 +74,6 @@ func main() {
         fmt.Printf("Title: %s\n", article.Title)
         fmt.Printf("Source: %s\n", article.SourceName)
         fmt.Printf("Published: %s\n", article.PubDate.Time.Format(time.RFC3339))
-        if article.Sentiment != "" {
-            fmt.Printf("Sentiment: %s\n", article.Sentiment)
-            fmt.Printf("Sentiment Stats: +%.2f/=%.2f/-%.2f\n",
-                article.SentimentStats.Positive,
-                article.SentimentStats.Neutral,
-                article.SentimentStats.Negative,
-            )
-        }
         fmt.Println()
     }
 }
@@ -139,78 +129,33 @@ func main() {
 }
 ```
 
-## Advanced Configuration
+## Available Services
 
-### Client Options
+### LatestNews Service
 
-```go
-package main
+- Real-time news articles
+- Streaming support
+- Full filtering capabilities
 
-import (
-    "log/slog"
-    "os"
-    "time"
+### NewsArchive Service
 
-    "github.com/sicamois/newsdata"
-)
+- Historical news articles
+- Date range filtering
+- Comprehensive search options
 
-func main() {
-    // Create a log file
-    logFile, err := os.Create("log_" + time.Now().Format("2006-01-02_15-04-05") + ".txt")
-    if err != nil {
-        panic(err)
-    }
-    defer logFile.Close()
+### CryptoNews Service
 
-    // Create a new client
-    client := newsdata.NewClient(
-        newsdata.WithTimeout(10*time.Second),
-        newsdata.WithCustomLogWriter(logFile),
-        newsdata.WithLogLevel(slog.LevelDebug),
-    )
+- Cryptocurrency-specific news
+- Coin filtering
+- Blockchain and crypto tags
 
-    // Use client...
-}
-```
+### Sources Service
 
-### Article Filtering
+- News source metadata
+- Source filtering by country/language
+- Priority domain support
 
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    "github.com/sicamois/newsdata"
-)
-
-func main() {
-    client := newsdata.NewClient(
-        newsdata.WithAPIKey("your-api-key"),
-    )
-
-    ctx := context.Background()
-    articles, err := client.LatestNews.Get(
-        ctx,
-        "climate change",
-        20,
-        newsdata.WithLanguages("en", "fr"),
-        newsdata.WithCountries("us", "gb", "fr"),
-        newsdata.WithCategories("environment", "science"),
-        newsdata.WithFromDate(time.Now().AddDate(0, 0, -7)),
-        newsdata.WithToDate(time.Now()),
-        newsdata.WithSentiment("positive"),
-        newsdata.WithRemoveDuplicates(),
-    )
-    if err != nil {
-        fmt.Printf("Error: %v\n", err)
-        return
-    }
-    // Process articles...
-}
-```
+## Examples
 
 ### Cryptocurrency News
 
@@ -232,7 +177,7 @@ import (
         ctx,
         "",
         10,
-        newsdata.WithCoins("BTC", "ETH"),
+        newsdata.WithCoins("btc", "eth"),
         newsdata.WithTags("blockchain", "technology"),
     )
     if err != nil {
@@ -367,32 +312,6 @@ func main() {
 }
 ```
 
-## Available Services
-
-### LatestNews Service
-
-- Real-time news articles
-- Streaming support
-- Full filtering capabilities
-
-### NewsArchive Service
-
-- Historical news articles
-- Date range filtering
-- Comprehensive search options
-
-### CryptoNews Service
-
-- Cryptocurrency-specific news
-- Coin filtering
-- Blockchain and crypto tags
-
-### Sources Service
-
-- News source metadata
-- Source filtering by country/language
-- Priority domain support
-
 ## Article Features
 
 Articles include rich metadata:
@@ -432,6 +351,15 @@ The client provides detailed error information:
 - Context cancellation
 - Parameter validation errors
 - Rate limiting information
+
+## Logging
+
+The client uses the `slog` package for logging.
+
+- The default logging level is set to `slog.LevelInfo`. You can change the logging level by setting the `slog.SetLogLoggerLevel` function, e.g. `slog.SetLogLoggerLevel(slog.LevelDebug)`.
+- The default logger is set to `slog.Default()`. You can change the logger by using the `slog.SetDefault` function, e.g. `slog.SetDefault(slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug})))`.
+
+See the [slog](https://pkg.go.dev/log/slog) package for more information.
 
 ## License
 

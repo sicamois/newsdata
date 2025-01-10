@@ -37,6 +37,17 @@ func (e endpoint) String() string {
 // requestParams represents a map of query parameters for API requests.
 type requestParams map[string]string
 
+func (p requestParams) String() string {
+	params := make([]string, 0, len(p))
+	for key, value := range p {
+		if key == "page" {
+			continue
+		}
+		params = append(params, fmt.Sprintf("%s=%s", key, value))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(params, ", "))
+}
+
 // newRequestParams creates a new set of request parameters with the given query and options.
 // It validates and processes the parameters based on the endpoint type.
 func newRequestParams[T NewsRequestParams | SourceRequestParams](query string, logger *slog.Logger, endpoint endpoint, params ...T) requestParams {

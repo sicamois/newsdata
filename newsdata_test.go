@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -74,7 +73,7 @@ func TestGetNewsFromArchive(t *testing.T) {
 
 func TestGetSources(t *testing.T) {
 	Loadenv(t)
-	client := NewClient(WithLogLevel(slog.LevelWarn))
+	client := NewClient()
 	sources, err := client.Sources.Get(context.Background())
 	if err != nil {
 		t.Fatalf("Error fetching Sources: %v", err)

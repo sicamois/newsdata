@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -57,24 +58,6 @@ func WithTimeout(timeout time.Duration) NewsDataClientOption {
 	}
 }
 
-// WithCustomLoggerWriter sets a custom logger writer for the client.
-//
-// If no custom logger writer is provided, the client will use the default logger.
-func WithCustomLogWriter(w io.Writer) NewsDataClientOption {
-	return func(o *clientOptions) {
-		o.customLoggerWriter = w
-	}
-}
-
-// WithLogLevel sets the log level for the client.
-//
-// If no log level is provided, the client will use a default log level of slog.LevelInfo.
-func WithLogLevel(level slog.Level) NewsDataClientOption {
-	return func(o *clientOptions) {
-		o.loggerLevel = level
-	}
-}
-
 // NewClient creates a new NewsData API client with the provided options.
 //
 // If no API key is provided via options, it attempts to read from the NEWSDATA_API_KEY
@@ -104,22 +87,14 @@ func NewClient(opts ...NewsDataClientOption) *NewsDataClient {
 			Timeout: options.timeout,
 		},
 	}
-	if options.customLoggerWriter != nil {
-		client.logger = newCustomLogger(options.customLoggerWriter, options.loggerLevel)
-	} else {
-		slog.SetLogLoggerLevel(options.loggerLevel)
-		client.logger = slog.Default()
-	}
+	defaultLogger := *slog.Default()
+	defaultCopy := &defaultLogger
+	client.logger = defaultCopy.With(slog.String("package", "newsdata"))
 	client.LatestNews = client.newLatestNewsService()
 	client.NewsArchive = client.newNewsArchiveService()
 	client.CryptoNews = client.newCryptoNewsService()
 	client.Sources = client.newSourcesService()
 	return client
-}
-
-// Logger returns the client's logger.
-func (c *NewsDataClient) Logger() *slog.Logger {
-	return c.logger
 }
 
 // errorResponse represents the API response when an error happened.
@@ -163,14 +138,31 @@ func (c *NewsDataClient) fetch(context context.Context, endpoint endpoint, param
 		return nil, fmt.Errorf("fetch: error building HTTP request: %w", err)
 	}
 
+	var resp *http.Response
 	// Create and execute the HTTP request.
 	defer func() {
-		c.logger.Debug("newsdata: fetch - response", "url", httpReq.URL.String(), "duration", time.Since(start))
+		attrs := make([]any, 0, 3)
+		attrs = append(attrs, slog.Group("request", "method", httpReq.Method, "url", httpReq.URL.String()))
+		if resp != nil {
+			headers := make([]string, 0, len(resp.Header))
+			for key, value := range resp.Header {
+				if key == "X-ACCESS-KEY" || key == "Date" || key == "Server" || key == "Vary" {
+					continue
+				}
+				headers = append(headers, fmt.Sprintf("%s=%s", key, strings.Join(value, ", ")))
+			}
+			headersString := fmt.Sprintf("{%s}", strings.Join(headers, ", "))
+			attrs = append(attrs, slog.Group("response", "status_code", resp.StatusCode, "status", resp.Status, "headers", headersString))
+		} else {
+			attrs = append(attrs, slog.String("response", "null"))
+		}
+		attrs = append(attrs, slog.Duration("duration", time.Since(start)))
+		c.logger.Debug("request completed", attrs...)
 	}()
 	httpReq.Header.Set("X-ACCESS-KEY", c.apiKey)
 	httpReq = httpReq.WithContext(context)
 
-	resp, err := c.httpClient.Do(httpReq)
+	resp, err = c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("fetch - error executing request - url: %s: %w", httpReq.URL.String(), err)
 	}
